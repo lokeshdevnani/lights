@@ -71,8 +71,19 @@ that cannot do a command are skipped, for example a colour on a white-only light
 | `30`, `30%` | brightness 1-100 |
 | `warm`, `neutral`, `cool`, `3000k` | white temperature (only where supported, e.g. the Mi lamp, 1700-6500 K) |
 | `white` | plain white mode |
+| `party [30s]` | random vivid colours on every light (or the named ones) until Ctrl-C, or for the given time; the lights go back to how they were afterwards |
 | `fix-ip` | re-find lights whose IP changed and update `devices.toml`; lights that still respond are left alone |
 | `list` | configured lights |
+
+### Party mode
+
+```
+lights party            # all lights, until Ctrl-C
+lights lampy party 2m   # one light, for two minutes
+```
+
+Lights that cannot show colours are skipped. A scheduled party needs a length:
+`lights party 2m in 10m`.
 
 ### Run a command later
 

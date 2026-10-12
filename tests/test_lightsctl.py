@@ -4,7 +4,7 @@ from pathlib import Path
 
 import datetime as dt
 
-from lightsctl import cli, config, timers
+from lightsctl import cli, config, effects, timers
 from lightsctl.base import parse_color, parse_kelvin
 from lightsctl.tuya import dp_to_white, hex_to_rgb, rgb_to_hex, white_to_dp
 
@@ -80,6 +80,18 @@ class TimerTests(unittest.TestCase):
         self.assertEqual((run_at, rest), (1030.0, ["lampy", "red"]))
         self.assertEqual(timers.split_when(["off"], now=1000.0), (None, ["off"]))
         self.assertEqual(timers.split_when(["lampy", "off", "in", "1h"], now=0.0)[0], 3600.0)
+
+
+class PartyTests(unittest.TestCase):
+    def test_colors_are_vivid_and_change(self):
+        prev = None
+        for _ in range(200):
+            rgb, hue = effects.party_color(prev)
+            self.assertTrue(all(0 <= c <= 255 for c in rgb))
+            self.assertEqual(max(rgb), 255)  # fully saturated and bright
+            if prev is not None:
+                self.assertGreater(min(abs(hue - prev), 1 - abs(hue - prev)), 0.15)
+            prev = hue
 
 
 class TuyaEncodingTests(unittest.TestCase):
