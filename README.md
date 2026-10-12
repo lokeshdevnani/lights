@@ -87,3 +87,7 @@ Errors are logged to `~/.cache/bulb-status/error.log`.
 - **Bulb moved IP:** run `bulb fix-ip`.
 - **Decrypt errors:** the local key changed (re-pairing or resetting the bulb does this). Fetch the new key.
 - **Not found on the network:** the bulb only supports 2.4 GHz Wi-Fi. Your computer must be on the same network.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
