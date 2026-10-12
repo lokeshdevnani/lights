@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Show Claude Code's state on the bulb. Meant to be called from hooks.
+
+Usage: bulb-status {working|needs-you|done|off|on|state}
+
+  working    blue
+  needs-you  orange
+  done       green for HOLD seconds, then the bulb returns to what it was
+  off        disable the status light (restores the bulb if it is mid-status)
+  on         enable it again
+  state      print whether it is enabled
+
+The call returns immediately; the bulb work happens in a detached process.
+If the bulb is off or unreachable, nothing happens.
+"""
+import fcntl
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HERE = Path(__file__).parent
+CACHE = Path.home() / ".cache" / "bulb-status"
+LATEST = CACHE / "latest"
+SAVED = CACHE / "saved.json"
+LOCK = CACHE / "lock"
+DISABLED = CACHE / "disabled"
+HOLD = 8
+TIMEOUT = 2
+
+COLORS = {
+    "working": (0, 60, 255),
+    "needs-you": (255, 110, 0),
+    "done": (0, 255, 60),
+}
+
+
+def load_env():
+    env = {}
+    for line in (HERE / ".env").read_text().splitlines():
+        if "=" in line:
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip()
+    return env
+
+
+def connect():
+    import tinytuya
+
+    env = load_env()
+    bulb = tinytuya.BulbDevice(
+        env["TUYA_DEVICE_ID"], env["TUYA_DEVICE_IP"], env["TUYA_LOCAL_KEY"],
+        version=float(env.get("TUYA_VERSION", 3.1)),
+    )
+    bulb.set_socketTimeout(TIMEOUT)
+    bulb.set_socketRetryLimit(1)
+    return bulb
+
+
+def read_dps(bulb):
+    res = bulb.status()
+    return res.get("dps") if res and "dps" in res else None
+
+
+def restore(bulb):
+    if not SAVED.exists():
+        return
+    dps = json.loads(SAVED.read_text())
+    if dps.get("2") == "colour":
+        bulb.set_value(2, "colour")
+        bulb.set_value(5, dps["5"])
+    else:
+        bulb.set_value(2, "white")
+        bulb.set_value(3, dps["3"])
+    SAVED.unlink(missing_ok=True)
+
+
+def is_latest(token):
+    return LATEST.exists() and LATEST.read_text() == token
+
+
+class locked:
+    def __enter__(self):
+        self.f = open(LOCK, "w")
+        fcntl.flock(self.f, fcntl.LOCK_EX)
+
+    def __exit__(self, *exc):
+        fcntl.flock(self.f, fcntl.LOCK_UN)
+        self.f.close()
+
+
+def run(event, token):
+    """Detached worker: apply the event unless a newer one has arrived."""
+    with locked():
+        if not is_latest(token):
+            return
+        bulb = connect()
+        if not SAVED.exists():
+            dps = read_dps(bulb)
+            if not dps or not dps.get("1"):
+                return  # unreachable or switched off: leave it alone
+            SAVED.write_text(json.dumps({k: dps.get(k) for k in "1235"}))
+        bulb.set_colour(*COLORS[event])
+
+    if event != "done":
+        return
+    time.sleep(HOLD)
+    with locked():
+        if is_latest(token):
+            restore(connect())
+
+
+def main(argv):
+    if len(argv) == 3 and argv[0] == "--run":
+        try:
+            run(argv[1], argv[2])
+        except Exception as e:  # never bother the caller
+            (CACHE / "error.log").open("a").write(f"{time.ctime()} {e!r}\n")
+        return
+    if len(argv) != 1 or argv[0] not in (*COLORS, "off", "on", "state"):
+        sys.exit(__doc__)
+    CACHE.mkdir(parents=True, exist_ok=True)
+    if argv[0] == "state":
+        print("off" if DISABLED.exists() else "on")
+        return
+    if argv[0] == "on":
+        DISABLED.unlink(missing_ok=True)
+        print("bulb status: on")
+        return
+    if argv[0] == "off":
+        DISABLED.touch()
+        LATEST.write_text(str(time.time_ns()))  # cancels any pending restore/event
+        with locked():
+            try:
+                restore(connect())
+            except Exception as e:
+                SAVED.unlink(missing_ok=True)
+                print(f"could not restore the bulb: {e!r}")
+        print("bulb status: off")
+        return
+    if DISABLED.exists():
+        return
+    token = str(time.time_ns())
+    LATEST.write_text(token)
+    subprocess.Popen(
+        [sys.executable, __file__, "--run", argv[0], token],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
