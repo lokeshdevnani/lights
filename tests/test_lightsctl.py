@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lightsctl import config
+from lightsctl import cli, config
 from lightsctl.base import parse_color, parse_kelvin
 from lightsctl.tuya import dp_to_white, hex_to_rgb, rgb_to_hex, white_to_dp
 
@@ -21,6 +21,40 @@ class ParseTests(unittest.TestCase):
     def test_kelvin(self):
         self.assertEqual(parse_kelvin("warm"), 2700)
         self.assertEqual(parse_kelvin("3500K"), 3500)
+
+
+NAMES = ["bulb", "lampy"]
+
+
+class CliParsingTests(unittest.TestCase):
+    def test_selector(self):
+        self.assertEqual(cli.split_selector(["off"], NAMES), (NAMES, ["off"]))
+        self.assertEqual(cli.split_selector([], NAMES), (NAMES, []))
+        self.assertEqual(cli.split_selector(["lampy", "orange"], NAMES), (["lampy"], ["orange"]))
+        self.assertEqual(cli.split_selector(["lampy,bulb", "off"], NAMES), (["lampy", "bulb"], ["off"]))
+        self.assertEqual(cli.split_selector(["all", "off"], NAMES), (NAMES, ["off"]))
+
+    def test_unknown_light_is_not_a_selector(self):
+        self.assertEqual(cli.split_selector(["lampyy", "on"], NAMES), (NAMES, ["lampyy", "on"]))
+
+    def test_shorthands(self):
+        n = cli.normalize
+        self.assertEqual(n([], NAMES), ("status", []))
+        self.assertEqual(n(["off"], NAMES), ("off", []))
+        self.assertEqual(n(["orange"], NAMES), ("color", ["orange"]))
+        self.assertEqual(n(["#ff8800"], NAMES), ("color", ["#ff8800"]))
+        self.assertEqual(n(["30"], NAMES), ("brightness", ["30"]))
+        self.assertEqual(n(["30%"], NAMES), ("brightness", ["30"]))
+        self.assertEqual(n(["warm"], NAMES), ("white", ["warm"]))
+        self.assertEqual(n(["3000k"], NAMES), ("white", ["3000k"]))
+        self.assertEqual(n(["white"], NAMES), ("white", []))
+        self.assertEqual(n(["color", "0", "0", "255"], NAMES), ("color", ["0", "0", "255"]))
+
+    def test_unknown_command(self):
+        with self.assertRaisesRegex(ValueError, "Lights: bulb, lampy"):
+            cli.normalize(["lampyy", "on"], NAMES)
+        with self.assertRaises(ValueError):
+            cli.normalize(["banana"], NAMES)
 
 
 class TuyaEncodingTests(unittest.TestCase):

@@ -1,24 +1,57 @@
-"""Command-line interface: lights [DEVICE|all] COMMAND [ARGS]."""
+"""Command-line interface: lights [LIGHT[,LIGHT...]] COMMAND."""
+import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from . import config
-from .base import Unsupported, parse_color, parse_kelvin
+from .base import COMMANDS, KELVIN_NAMES, Unsupported, parse_color, parse_kelvin
 
 USAGE = """\
-Usage: lights [DEVICE|all] COMMAND [ARGS]    (or: lights -d DEVICE COMMAND)
+Usage: lights [LIGHT[,LIGHT...]] [COMMAND]
 
-  on | off | toggle
-  color NAME | #RRGGBB | R G B     red green blue yellow orange purple pink cyan white
-  brightness 1-100
-  white [KELVIN|warm|neutral|cool]  white mode; kelvin only on lights that support it
-  status                            show state
-  fix-ip                            find the light again after its IP changed (updates devices.toml)
-  list                              show configured lights
+  lights                    show every light
+  lights on | off | toggle  all lights
+  lights lampy on           one light      (lights bulb,lampy off: several)
+  lights lampy orange       a colour name or #RRGGBB
+  lights lampy 30           brightness 1-100 (30% works too)
+  lights lampy warm         warm | neutral | cool | 3000k   (kelvin where supported)
+  lights lampy white        plain white mode
 
-DEVICE is a name from devices.toml; without one the default light is used.
-`all` runs the command on every light and skips ones that cannot do it.
+Long forms: color NAME|#RRGGBB|R G B, brightness N, white [KELVIN].
+Also: status, list, fix-ip (re-finds lights whose IP changed).
+No light name means all lights; lights that cannot do a command are skipped.
 """
+
+
+def split_selector(args: list, names: list) -> tuple:
+    """('lampy,bulb', 'off') -> (['lampy', 'bulb'], ['off']); no light named -> all of them."""
+    if args:
+        wanted = [p for p in args[0].split(",") if p]
+        if wanted and all(p == "all" or p in names for p in wanted):
+            return (names if "all" in wanted else wanted), args[1:]
+    return names, args
+
+
+def normalize(rest: list, names: list) -> tuple:
+    """Turn user input, including shorthands, into (command, args)."""
+    if not rest:
+        return "status", []
+    head = rest[0].lower()
+    if head in COMMANDS:
+        return head, rest[1:]
+    if len(rest) == 1:
+        if re.fullmatch(r"\d{1,3}%?", head):
+            return "brightness", [head.rstrip("%")]
+        if head in KELVIN_NAMES or re.fullmatch(r"\d{4}k", head):
+            return "white", [head]
+        try:
+            parse_color([head])
+            return "color", [head]
+        except ValueError:
+            pass
+    hint = f" Lights: {', '.join(names)}." if len(rest) > 1 else ""
+    raise ValueError(f"unknown light or command {rest[0]!r}.{hint} Run `lights help` for usage.")
 
 
 def describe(st: dict) -> str:
@@ -34,12 +67,11 @@ def describe(st: dict) -> str:
     return ", ".join(parts)
 
 
-def cancel_status_restore(cfg: dict, name: str) -> None:
+def cancel_status_restore() -> None:
     """A manual change wins over a pending lights-status restore."""
-    if name != config.status_name(cfg) or not config.CACHE.exists():
-        return
-    (config.CACHE / "saved.json").unlink(missing_ok=True)
-    (config.CACHE / "latest").write_text(str(time.time_ns()))
+    if config.CACHE.exists():
+        (config.CACHE / "saved.json").unlink(missing_ok=True)
+        (config.CACHE / "latest").write_text(str(time.time_ns()))
 
 
 def ensure_on(light) -> None:
@@ -49,17 +81,20 @@ def ensure_on(light) -> None:
 
 def run(cfg: dict, name: str, cmd: str, args: list) -> str:
     light = config.make(cfg, name)
+    if cmd == "status":
+        return describe(light.status())
     if cmd == "fix-ip":
+        try:
+            light.status()
+            return f"reachable at {cfg['devices'][name].get('ip')}"
+        except Exception:
+            pass
         ip = light.find_ip()
         if not ip:
             raise ConnectionError("not found; check it has power and is on the same network")
-        old = cfg["devices"][name].get("ip")
         config.update_field(name, "ip", ip)
-        return f"at {ip}" + (" (unchanged)" if ip == old else f" (was {old}), devices.toml updated")
-    if cmd == "status":
-        return describe(light.status())
+        return f"found at {ip} (was {cfg['devices'][name].get('ip')}), devices.toml updated"
 
-    cancel_status_restore(cfg, name)
     if cmd == "on":
         light.on()
     elif cmd == "off":
@@ -73,52 +108,55 @@ def run(cfg: dict, name: str, cmd: str, args: list) -> str:
         light.color(rgb)
     elif cmd == "brightness":
         light.require("brightness")
-        pct = int(args[0])
+        pct = int(args[0]) if args else -1
+        if not 1 <= pct <= 100:
+            raise ValueError("brightness must be 1-100")
         ensure_on(light)
         light.brightness(pct)
     elif cmd == "white":
         kelvin = parse_kelvin(args[0]) if args else None
         ensure_on(light)
         light.white(kelvin)
-    else:
-        sys.exit(f"unknown command {cmd!r}. Run `lights` with no arguments for usage.")
     return "ok"
 
 
 def main(argv: list) -> None:
+    if argv[:1] in (["help"], ["-h"], ["--help"]):
+        print(USAGE)
+        return
     cfg = config.load()
     names = config.device_names(cfg)
-    args = list(argv)
-    target = None
-    if args[:1] == ["-d"] and len(args) > 1:
-        target, args = args[1], args[2:]
-    elif args and (args[0] in names or args[0] == "all"):
-        target = args.pop(0)
-    if not args:
-        sys.exit(USAGE)
+    targets, rest = split_selector(list(argv), names)
+    try:
+        cmd, args = normalize(rest, names)
+    except ValueError as e:
+        sys.exit(str(e))
 
-    if args[0] == "list":
+    if cmd == "list":
         for n in names:
             d = cfg["devices"][n]
-            tags = [t for t, v in (("default", config.default_name(cfg)), ("status light", config.status_name(cfg))) if v == n]
-            print(f"{n:10} {d['type']:9} {d.get('ip', '?'):15} {', '.join(tags)}")
+            print(f"{n:10} {d['type']:9} {d.get('ip', '?'):15} {'status light' if n == config.status_name(cfg) else ''}")
         return
 
-    if target not in (None, "all") and target not in names:
-        sys.exit(f"unknown light {target!r}. Configured: {', '.join(names)}")
-    targets = names if target == "all" else [target or config.default_name(cfg)]
-    many = len(targets) > 1
-    failed = False
-    for n in targets:
+    if cmd not in ("status", "fix-ip") and config.status_name(cfg) in targets:
+        cancel_status_restore()
+
+    def one(name):
         try:
-            out = run(cfg, n, args[0], args[1:])
+            return name, run(cfg, name, cmd, args), None
         except Unsupported as e:
-            if not many:
-                sys.exit(f"{n}: {e}")
-            out = f"skipped ({e})"
+            return name, f"skipped ({e})", None if len(targets) > 1 else str(e)
         except Exception as e:
-            print(f"{n}: error: {e}", file=sys.stderr)
+            return name, None, str(e)
+
+    with ThreadPoolExecutor(len(targets)) as pool:
+        results = list(pool.map(one, targets))
+
+    failed = False
+    for name, out, err in results:
+        if err:
+            print(f"{name}: error: {err}", file=sys.stderr)
             failed = True
-            continue
-        print(f"{n}: {out}" if many or args[0] in ("status", "fix-ip") else out)
+        else:
+            print(f"{name}: {out}")
     sys.exit(1 if failed else 0)

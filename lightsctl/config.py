@@ -10,22 +10,26 @@ CACHE = Path.home() / ".cache" / "lights-status"
 
 
 def load() -> dict:
+    from .base import RESERVED_WORDS
+
     if not CONFIG.exists():
         sys.exit("devices.toml not found. Copy devices.example.toml to devices.toml and fill it in.")
-    return tomllib.loads(CONFIG.read_text())
+    cfg = tomllib.loads(CONFIG.read_text())
+    if not cfg.get("devices"):
+        sys.exit("devices.toml has no [devices.NAME] sections.")
+    for name in cfg["devices"]:
+        if name.lower() in RESERVED_WORDS:
+            sys.exit(f"devices.toml: {name!r} clashes with a command or colour name; pick another name.")
+    return cfg
 
 
 def device_names(cfg: dict) -> list:
     return list(cfg.get("devices", {}))
 
 
-def default_name(cfg: dict) -> str:
-    return cfg.get("default") or device_names(cfg)[0]
-
-
 def status_name(cfg: dict) -> str:
-    """The light that shows Claude Code's state (see lights-status)."""
-    return cfg.get("status_device") or default_name(cfg)
+    """The light that shows Claude Code's state (see lights-status); the first light by default."""
+    return cfg.get("status_device") or device_names(cfg)[0]
 
 
 def make(cfg: dict, name: str):

@@ -1,6 +1,5 @@
 # Copy to devices.toml and fill in. devices.toml is gitignored: it holds secrets.
-default = "bulb"        # used when a command names no light
-status_device = "bulb"  # shows Claude Code's state (lights-status)
+status_device = "bulb"  # shows Claude Code's state (lights-status); defaults to the first light
 
 # Tuya / Smart Life light (Wipro and many others), controlled over the LAN.
 [devices.bulb]

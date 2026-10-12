@@ -10,6 +10,10 @@ NAMED_COLORS = {
 KELVIN_NAMES = {"warm": 2700, "neutral": 4000, "cool": 6500}
 
 
+COMMANDS = frozenset({"on", "off", "toggle", "status", "list", "fix-ip", "color", "brightness", "white"})
+RESERVED_WORDS = COMMANDS | NAMED_COLORS.keys() | KELVIN_NAMES.keys() | {"all"}
+
+
 class Unsupported(Exception):
     """The light cannot do what was asked (e.g. colour on a white-only light)."""
 

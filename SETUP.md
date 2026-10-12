@@ -101,8 +101,8 @@ It speaks Xiaomi's miIO protocol and needs a device token from the user's Mi Hom
 cp devices.example.toml devices.toml && chmod 600 devices.toml
 ```
 
-Fill in one `[devices.NAME]` section per light (pick short names), set `default` and
-`status_device`, and delete sections the user does not have. Use the protocol version from the
+Fill in one `[devices.NAME]` section per light (pick short names that are not commands or
+colour names), set `status_device`, and delete sections the user does not have. Use the protocol version from the
 scan for Tuya lights (usually 3.1 or 3.3). `devices.toml` is gitignored, so keep it that way.
 
 ## 5. Create the commands
@@ -117,7 +117,7 @@ for n in lights lights-status; do
 done
 ```
 
-Test it: `lights list`, `lights status`, then `lights color red` and `lights white` on each light.
+Test it: `lights list`, `lights` (shows every light), then `lights NAME red` and `lights NAME white` on each light.
 On a Tuya light, "Unable to Connect" means the Smart Life app is holding the one local connection:
 ask the user to close it and retry.
 
@@ -144,5 +144,6 @@ them, green when done (then it restores the previous light). If yes:
 
 ## 7. Wrap up
 
-Tell the user what was set up and where, and the commands: `lights [NAME|all] on|off|toggle|color|brightness|white|status|fix-ip|list`.
-`lights NAME fix-ip` re-finds a light if its IP changes.
+Tell the user what was set up and where, and the basics: `lights` shows every light, `lights off`
+turns everything off, `lights NAME orange` / `lights NAME 30` / `lights NAME warm` change one light,
+and `lights fix-ip` re-finds lights whose IP changed.

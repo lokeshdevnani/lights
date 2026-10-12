@@ -5,12 +5,12 @@ Works with Tuya / Smart Life lights (Wipro and many others) and the Xiaomi Mi Be
 (Yeelight protocol over miIO). Includes an optional status light for Claude Code.
 
 ```
-$ lights on
-$ lights lampy color orange
-$ lights brightness 30
-$ lights all off
-$ lights status
+$ lights                  # show every light
 bulb: on, colour (0, 60, 255), brightness 100%
+lampy: off
+$ lights off              # turn everything off
+$ lights lampy orange     # one light, by colour name
+$ lights bulb,lampy 30    # several lights, brightness 30%
 ```
 
 ## Quick start with Claude Code
@@ -57,19 +57,25 @@ a region other than your own (here it was `i2`).
 ## Usage
 
 ```
-lights [DEVICE|all] COMMAND [ARGS]
-
-  on | off | toggle
-  color NAME | #RRGGBB | R G B      red green blue yellow orange purple pink cyan white
-  brightness 1-100
-  white [KELVIN|warm|neutral|cool]  kelvin only where supported (the Mi lamp: 1700-6500)
-  status
-  fix-ip      find the light again after its IP changed; updates devices.toml
-  list
+lights [LIGHT[,LIGHT...]] [COMMAND]
 ```
 
-Without a device name, the `default` light from `devices.toml` is used. `all` runs the command
-on every light and skips lights that cannot do it (for example `color` on a white-only light).
+No light name means **all lights**. A name (or comma-separated names) means just those. Lights
+that cannot do a command are skipped, for example a colour on a white-only light.
+
+| Command | Meaning |
+|---|---|
+| `lights` | show every light (same as `status`) |
+| `on`, `off`, `toggle` | power |
+| `orange`, `#ff8800` | colour by name or hex (red green blue yellow orange purple pink cyan) |
+| `30`, `30%` | brightness 1-100 |
+| `warm`, `neutral`, `cool`, `3000k` | white temperature (only where supported, e.g. the Mi lamp, 1700-6500 K) |
+| `white` | plain white mode |
+| `fix-ip` | re-find lights whose IP changed and update `devices.toml`; lights that still respond are left alone |
+| `list` | configured lights |
+
+Long forms also work: `color NAME|#RRGGBB|R G B`, `brightness N`, `white [KELVIN]`.
+Light names cannot clash with commands or colour names (`devices.toml` is checked on load).
 
 ## Claude Code status light
 
@@ -115,7 +121,7 @@ A backend is one small class in `lightsctl/` that subclasses `Light` (`lightsctl
 
 - **"Unable to Connect" or timeouts on a Tuya light:** it accepts one local connection at a time.
   Close the Smart Life app and retry.
-- **A light moved IP:** `lights NAME fix-ip`.
+- **A light moved IP:** `lights fix-ip`.
 - **Decrypt errors on a Tuya light:** the local key changed (re-pairing or resetting does this). Fetch the new key.
 - **Light not found:** Tuya and Mi lights only support 2.4 GHz Wi-Fi; your computer must be on the same network.
 
