@@ -128,5 +128,13 @@ class ConfigTests(unittest.TestCase):
                 config.update_field("c", "ip", "1")
 
 
+class ServerTests(unittest.TestCase):
+    def test_run_cli_refuses_internal_commands(self):
+        from lightsctl import server
+        self.assertEqual(server.run_cli("serve"), (False, "not allowed"))
+        self.assertEqual(server.run_cli("--later 1 x off"), (False, "not allowed"))
+        self.assertEqual(server.run_cli(""), (False, "not allowed"))
+
+
 if __name__ == "__main__":
     unittest.main()

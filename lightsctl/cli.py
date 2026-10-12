@@ -24,6 +24,7 @@ Later:  add `in 30s|5m|1h30m` or `at 22:30` to any command:  lights lampy red in
 
 Long forms: color NAME|#RRGGBB|R G B, brightness N, white [KELVIN].
 Also: status, list, fix-ip (re-finds lights whose IP changed).
+Phone:  lights serve [PORT]   web page for your phone (see README).
 No light name means all lights; lights that cannot do a command are skipped.
 """
 
@@ -129,6 +130,10 @@ def main(argv: list) -> None:
         print(USAGE)
         return
     argv = list(argv)
+    if argv[:1] == ["serve"]:
+        from .server import serve
+        serve(int(argv[1]) if len(argv) > 1 else 8080)
+        return
     if argv[:1] == ["--later"]:  # background worker started by timers.schedule
         timers.wait_until(float(argv[1]), argv[2])
         argv = argv[3:]

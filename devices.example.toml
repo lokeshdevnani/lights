@@ -1,5 +1,6 @@
 # Copy to devices.toml and fill in. devices.toml is gitignored: it holds secrets.
 status_device = "bulb"  # shows Claude Code's state (lights-status); defaults to the first light
+# server_key = "pick-a-word"  # optional: `lights serve` then needs ?key=pick-a-word in the address
 
 # Tuya / Smart Life light (Wipro and many others), controlled over the LAN.
 [devices.bulb]

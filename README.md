@@ -104,6 +104,16 @@ computer sleeps past the time, the command runs when it wakes. Errors go to
 Long forms also work: `color NAME|#RRGGBB|R G B`, `brightness N`, `white [KELVIN]`.
 Light names cannot clash with commands or colour names (`devices.toml` is checked on load).
 
+## Control from your phone
+
+```bash
+lights serve          # then open http://<your-mac-ip>:8080 on your phone
+```
+
+Add the page to your home screen. You get on/off, colours, brightness, warm/cool and party buttons for every light.
+
+For a bare-minimum password, add `server_key = "something"` at the top of `devices.toml` and open `http://<your-mac-ip>:8080/?key=something`. It is only a shared word in the address, not real security. The lights only talk on your home network, so the Mac running `lights serve` must be awake. To reach it away from home, put a tunnel in front of port 8080 (Cloudflare Tunnel or Tailscale), ideally one that adds its own login.
+
 ## Claude Code status light
 
 `lights-status` shows what Claude Code is doing on one light (`status_device` in `devices.toml`):
