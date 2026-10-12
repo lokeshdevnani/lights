@@ -1,3 +1,4 @@
 .env
+devices.toml
 .venv/
 __pycache__/

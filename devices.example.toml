@@ -1,0 +1,19 @@
+# Copy to devices.toml and fill in. devices.toml is gitignored: it holds secrets.
+default = "bulb"        # used when a command names no light
+status_device = "bulb"  # shows Claude Code's state (lights-status)
+
+# Tuya / Smart Life light (Wipro and many others), controlled over the LAN.
+[devices.bulb]
+type = "tuya"
+id = "your_device_id"
+ip = "192.168.0.x"
+key = "your_local_key"
+version = 3.1
+
+# Yeelight protocol over Xiaomi miIO (Mi Bedside Lamp 2).
+[devices.lampy]
+type = "yeelight"
+did = "your_device_id"      # numeric id; lets `fix-ip` find it again
+ip = "192.168.0.x"
+token = "your_32_char_token"
+model = "yeelink.light.bslamp2"

@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
-"""Show Claude Code's state on the bulb. Meant to be called from hooks.
+"""Show Claude Code's state on a light. Meant to be called from hooks.
 
-Usage: bulb-status {working|needs-you|done|off|on|state}
+Usage: lights-status {working|needs-you|done|off|on|state}
 
   working    blue
   needs-you  orange
-  done       green for HOLD seconds, then the bulb returns to what it was
-  off        disable the status light (restores the bulb if it is mid-status)
+  done       green for HOLD seconds, then the light returns to what it was
+  off        disable the status light (restores the light if it is mid-status)
   on         enable it again
   state      print whether it is enabled
 
-The call returns immediately; the bulb work happens in a detached process.
-If the bulb is off or unreachable, nothing happens.
+Which light is used: `status_device` in devices.toml (default: the default light).
+The call returns immediately; the work happens in a detached process.
+If the light is off or unreachable, nothing happens.
 """
 import fcntl
 import json
-import os
 import subprocess
 import sys
 import time
-from pathlib import Path
 
-HERE = Path(__file__).parent
-CACHE = Path.home() / ".cache" / "bulb-status"
+from lightsctl import config
+
+CACHE = config.CACHE
 LATEST = CACHE / "latest"
 SAVED = CACHE / "saved.json"
 LOCK = CACHE / "lock"
 DISABLED = CACHE / "disabled"
 HOLD = 8
-TIMEOUT = 2
 
 COLORS = {
     "working": (0, 60, 255),
@@ -37,48 +36,18 @@ COLORS = {
 }
 
 
-def load_env():
-    env = {}
-    for line in (HERE / ".env").read_text().splitlines():
-        if "=" in line:
-            k, v = line.split("=", 1)
-            env[k.strip()] = v.strip()
-    return env
+def get_light():
+    cfg = config.load()
+    return config.make(cfg, config.status_name(cfg))
 
 
-def connect():
-    import tinytuya
-
-    env = load_env()
-    bulb = tinytuya.BulbDevice(
-        env["TUYA_DEVICE_ID"], env["TUYA_DEVICE_IP"], env["TUYA_LOCAL_KEY"],
-        version=float(env.get("TUYA_VERSION", 3.1)),
-    )
-    bulb.set_socketTimeout(TIMEOUT)
-    bulb.set_socketRetryLimit(1)
-    return bulb
-
-
-def read_dps(bulb):
-    res = bulb.status()
-    return res.get("dps") if res and "dps" in res else None
-
-
-def restore(bulb):
+def restore(light):
     if not SAVED.exists():
         return
-    dps = json.loads(SAVED.read_text())
-    now = read_dps(bulb)
-    if now and now.get("5") != dps.get("applied"):
-        SAVED.unlink(missing_ok=True)  # changed by hand since: leave it alone
-        return
-    if dps.get("2") == "colour":
-        bulb.set_value(2, "colour")
-        bulb.set_value(5, dps["5"])
-    else:
-        bulb.set_value(2, "white")
-        bulb.set_value(3, dps["3"])
+    saved = json.loads(SAVED.read_text())
     SAVED.unlink(missing_ok=True)
+    if light.fingerprint() == saved.get("applied"):  # otherwise it was changed by hand: leave it
+        light.restore(saved["snap"])
 
 
 def is_latest(token):
@@ -97,18 +66,17 @@ class locked:
 
 def run(event, token):
     """Detached worker: apply the event unless a newer one has arrived."""
+    light = get_light()
     with locked():
         if not is_latest(token):
             return
-        bulb = connect()
         if not SAVED.exists():
-            dps = read_dps(bulb)
-            if not dps or not dps.get("1"):
-                return  # unreachable or switched off: leave it alone
-            SAVED.write_text(json.dumps({k: dps.get(k) for k in "1235"}))
-        bulb.set_colour(*COLORS[event])
+            if not light.status()["on"]:
+                return  # switched off: leave it alone
+            SAVED.write_text(json.dumps({"snap": light.snapshot()}))
+        light.color(COLORS[event])
         saved = json.loads(SAVED.read_text())
-        saved["applied"] = (read_dps(bulb) or {}).get("5")
+        saved["applied"] = light.fingerprint()
         SAVED.write_text(json.dumps(saved))
 
     if event != "done":
@@ -116,7 +84,7 @@ def run(event, token):
     time.sleep(HOLD)
     with locked():
         if is_latest(token):
-            restore(connect())
+            restore(light)
 
 
 def main(argv):
@@ -134,18 +102,18 @@ def main(argv):
         return
     if argv[0] == "on":
         DISABLED.unlink(missing_ok=True)
-        print("bulb status: on")
+        print("lights-status: on")
         return
     if argv[0] == "off":
         DISABLED.touch()
-        LATEST.write_text(str(time.time_ns()))  # cancels any pending restore/event
+        LATEST.write_text(str(time.time_ns()))  # cancels any pending restore or event
         with locked():
             try:
-                restore(connect())
+                restore(get_light())
             except Exception as e:
                 SAVED.unlink(missing_ok=True)
-                print(f"could not restore the bulb: {e!r}")
-        print("bulb status: off")
+                print(f"could not restore the light: {e!r}")
+        print("lights-status: off")
         return
     if DISABLED.exists():
         return

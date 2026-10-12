@@ -8,15 +8,15 @@ are doing, and check each step before the next.
 
 - **Ask before changing anything outside this repo**, especially `~/.claude/settings.json`
   and `~/.local/bin`. Show the exact change and wait for a yes.
-- **Never print the local key** (or other secrets) in chat or logs. Write it straight into `.env`.
-- Only run third-party code (step 3) after the user agrees, and tell them what it does.
-- Don't commit `.env`. It is gitignored; keep it that way.
+- **Never print local keys or tokens** (or other secrets) in chat or logs. Write it straight into `devices.toml`.
+- Only run third-party code (steps 3 and 3b) after the user agrees, and tell them what it does.
+- Don't commit `devices.toml`. It is gitignored; keep it that way.
 
-## 1. Clone and install
+## 1. Clone and install (Python 3.11+)
 
 ```sh
-git clone https://github.com/lokeshdevnani/smarthome-bulb-cli.git
-cd smarthome-bulb-cli
+git clone https://github.com/lokeshdevnani/lights.git
+cd lights
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 
@@ -53,7 +53,7 @@ which logs in through the Smart Life app with Tuya's official device-sharing SDK
    `.venv/bin/python tuya_devices.py --user-code <CODE> --json > <tmpdir>/devices.json`.
 3. It prints a QR code and also saves `tuya-login-qr.png`. Open the image for the user
    (`open` on macOS). They scan it in Smart Life (+, then Scan) and tap **Confirm login**.
-4. Read the matching device's `local_key` from the JSON by script and write it to `.env` without showing it.
+4. Read the matching device's `local_key` from the JSON by script and write it to `devices.toml` without showing it.
 5. Delete the temp directory (it holds every key on the account) and the cached session at
    `~/.config/tuya-smartlife/session.json`.
 
@@ -61,14 +61,49 @@ which logs in through the Smart Life app with Tuya's official device-sharing SDK
 and use `python -m tinytuya wizard`. This only works if the project's data center matches the
 app account's. A mismatch gives "Data centers inconsistency".
 
-## 4. Write `.env`
+## 3b. Mi Bedside Lamp 2 (skip if the user has none)
+
+It speaks Xiaomi's miIO protocol and needs a device token from the user's Mi Home account.
+
+1. Find its IP and numeric device ID (this changes nothing on the lamp):
+
+   ```sh
+   .venv/bin/python - <<'EOT'
+   import socket, time, subprocess
+   hello = bytes.fromhex("21310020" + "ff" * 28)
+   base = subprocess.check_output("ipconfig getifaddr en0", shell=True, text=True).strip().rsplit(".", 1)[0]
+   s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1); s.settimeout(0.3)
+   for t in [f"{base}.255"] + [f"{base}.{i}" for i in range(1, 255)]:
+       try: s.sendto(hello, (t, 54321))
+       except OSError: pass
+   end = time.time() + 4
+   while time.time() < end:
+       try: d, (ip, _) = s.recvfrom(1024)
+       except socket.timeout: continue
+       if d[:2] == b"\x21\x31": print(ip, int.from_bytes(d[8:12], "big"))
+   EOT
+   ```
+
+2. Get the token with [Xiaomi-cloud-tokens-extractor](https://github.com/PiotrMachowski/Xiaomi-cloud-tokens-extractor)
+   (MIT) with **QR login**. Never ask for or handle the user's Mi password. Download it into a
+   temporary directory outside this repo and run `python token_extractor.py -s "" -o out.json`,
+   feeding it `q` for QR login. Leave the server empty so it checks every region (the lamp may be on
+   a region that is not the user's own, such as `i2`). It serves the QR code on a local page
+   (`http://127.0.0.1:31415`); open it for the user, who scans it in Mi Home and confirms.
+3. Read the device whose model is `yeelink.light.bslamp2` from `out.json` by script and put its
+   token straight into `devices.toml` without showing it.
+4. Delete the temporary directory. It holds every device token on the account.
+
+## 4. Write `devices.toml`
 
 ```sh
-cp .env.example .env && chmod 600 .env
+cp devices.example.toml devices.toml && chmod 600 devices.toml
 ```
 
-Fill in `TUYA_DEVICE_ID`, `TUYA_DEVICE_IP`, `TUYA_LOCAL_KEY` and `TUYA_VERSION`
-(use the version from the scan, usually 3.1 or 3.3).
+Fill in one `[devices.NAME]` section per light (pick short names), set `default` and
+`status_device`, and delete sections the user does not have. Use the protocol version from the
+scan for Tuya lights (usually 3.1 or 3.3). `devices.toml` is gitignored, so keep it that way.
 
 ## 5. Create the commands
 
@@ -76,19 +111,20 @@ After the user agrees, create two wrappers in `~/.local/bin` (make sure it is on
 
 ```sh
 mkdir -p ~/.local/bin
-for n in bulb bulb-status; do
+for n in lights lights-status; do
   printf '#!/bin/sh\nexec %s/.venv/bin/python %s/%s "$@"\n' "$PWD" "$PWD" "$n" > ~/.local/bin/$n
   chmod +x ~/.local/bin/$n
 done
 ```
 
-Test it: `bulb status`, then `bulb color red`, `bulb white`. If you get "Unable to Connect",
-ask the user to close the Smart Life app (the bulb allows one local connection) and retry.
+Test it: `lights list`, `lights status`, then `lights color red` and `lights white` on each light.
+On a Tuya light, "Unable to Connect" means the Smart Life app is holding the one local connection:
+ask the user to close it and retry.
 
 ## 6. Claude Code status light (optional)
 
-Ask whether they want the bulb to show Claude's state: blue while working, orange when it
-needs them, green when done (then it restores the previous light). If yes:
+Ask whether they want a light to show Claude's state: blue while working, orange when it needs
+them, green when done (then it restores the previous light). If yes:
 
 1. Back up `~/.claude/settings.json` to `settings.json.bak`.
 2. Show the user the three hooks below and get a yes.
@@ -97,16 +133,16 @@ needs them, green when done (then it restores the previous light). If yes:
    it back works.
 
 ```json
-"UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "~/.local/bin/bulb-status working", "timeout": 5 }] }],
-"Notification":     [{ "hooks": [{ "type": "command", "command": "~/.local/bin/bulb-status needs-you", "timeout": 5 }] }],
-"Stop":             [{ "hooks": [{ "type": "command", "command": "~/.local/bin/bulb-status done", "timeout": 5 }] }]
+"UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "~/.local/bin/lights-status working", "timeout": 5 }] }],
+"Notification":     [{ "hooks": [{ "type": "command", "command": "~/.local/bin/lights-status needs-you", "timeout": 5 }] }],
+"Stop":             [{ "hooks": [{ "type": "command", "command": "~/.local/bin/lights-status done", "timeout": 5 }] }]
 ```
 
 4. Tell the user to run `/hooks` or start a new session so the hooks load.
 
-`bulb-status off` / `on` / `state` mutes and unmutes it. Errors go to `~/.cache/bulb-status/error.log`.
+`lights-status off` / `on` / `state` mutes and unmutes it. Errors go to `~/.cache/lights-status/error.log`.
 
 ## 7. Wrap up
 
-Tell the user what was set up and where, the commands (`bulb on|off|color|brightness|white|status|fix-ip`),
-and that `bulb fix-ip` re-finds the bulb if its IP changes.
+Tell the user what was set up and where, and the commands: `lights [NAME|all] on|off|toggle|color|brightness|white|status|fix-ip|list`.
+`lights NAME fix-ip` re-finds a light if its IP changes.
