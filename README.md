@@ -4,7 +4,14 @@ Control a Tuya-based smart bulb (tested with a Wipro bulb, protocol 3.1) from th
 terminal over the LAN. No cloud calls at runtime. Includes an optional status light
 for Claude Code.
 
-## Setup
+## Quick start with Claude Code
+
+Paste this into Claude Code. It does the whole setup, asks before changing any settings, and
+never prints your local key:
+
+> Set up https://github.com/lokeshdevnani/smarthome-bulb-cli for me. Clone it, read `SETUP.md`, and follow it step by step. Ask me before changing any settings.
+
+## Manual setup
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
