@@ -2,7 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lightsctl import cli, config
+import datetime as dt
+
+from lightsctl import cli, config, timers
 from lightsctl.base import parse_color, parse_kelvin
 from lightsctl.tuya import dp_to_white, hex_to_rgb, rgb_to_hex, white_to_dp
 
@@ -55,6 +57,29 @@ class CliParsingTests(unittest.TestCase):
             cli.normalize(["lampyy", "on"], NAMES)
         with self.assertRaises(ValueError):
             cli.normalize(["banana"], NAMES)
+
+
+class TimerTests(unittest.TestCase):
+    def test_durations(self):
+        self.assertEqual(timers.parse_duration("30s"), 30)
+        self.assertEqual(timers.parse_duration("5m"), 300)
+        self.assertEqual(timers.parse_duration("1h30m"), 5400)
+        for bad in ("30", "5x", "", "m5"):
+            with self.assertRaises(ValueError):
+                timers.parse_duration(bad)
+
+    def test_clock_rolls_to_tomorrow(self):
+        now = dt.datetime(2026, 10, 13, 22, 0, 0)
+        self.assertEqual(dt.datetime.fromtimestamp(timers.parse_clock("22:30", now)), dt.datetime(2026, 10, 13, 22, 30))
+        self.assertEqual(dt.datetime.fromtimestamp(timers.parse_clock("07:15", now)), dt.datetime(2026, 10, 14, 7, 15))
+        with self.assertRaises(ValueError):
+            timers.parse_clock("25:00", now)
+
+    def test_split_when(self):
+        run_at, rest = timers.split_when(["lampy", "red", "in", "30s"], now=1000.0)
+        self.assertEqual((run_at, rest), (1030.0, ["lampy", "red"]))
+        self.assertEqual(timers.split_when(["off"], now=1000.0), (None, ["off"]))
+        self.assertEqual(timers.split_when(["lampy", "off", "in", "1h"], now=0.0)[0], 3600.0)
 
 
 class TuyaEncodingTests(unittest.TestCase):

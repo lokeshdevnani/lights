@@ -4,7 +4,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import config
+from . import config, timers
 from .base import COMMANDS, KELVIN_NAMES, Unsupported, parse_color, parse_kelvin
 
 USAGE = """\
@@ -17,6 +17,9 @@ Usage: lights [LIGHT[,LIGHT...]] [COMMAND]
   lights lampy 30           brightness 1-100 (30% works too)
   lights lampy warm         warm | neutral | cool | 3000k   (kelvin where supported)
   lights lampy white        plain white mode
+
+Later:  add `in 30s|5m|1h30m` or `at 22:30` to any command:  lights lampy red in 30s,  lights off at 22:30
+        lights timers (list scheduled commands), lights cancel [ID] (cancel them).
 
 Long forms: color NAME|#RRGGBB|R G B, brightness N, white [KELVIN].
 Also: status, list, fix-ip (re-finds lights whose IP changed).
@@ -124,13 +127,34 @@ def main(argv: list) -> None:
     if argv[:1] in (["help"], ["-h"], ["--help"]):
         print(USAGE)
         return
+    argv = list(argv)
+    if argv[:1] == ["--later"]:  # background worker started by timers.schedule
+        timers.wait_until(float(argv[1]), argv[2])
+        argv = argv[3:]
     cfg = config.load()
     names = config.device_names(cfg)
-    targets, rest = split_selector(list(argv), names)
     try:
+        run_at, argv = timers.split_when(argv, None)
+        targets, rest = split_selector(argv, names)
         cmd, args = normalize(rest, names)
     except ValueError as e:
         sys.exit(str(e))
+
+    if cmd == "timers":
+        jobs = timers.pending()
+        for j in jobs:
+            print(f"{j['id']}  {timers.describe(j['run_at']):26} lights {' '.join(j['argv'])}")
+        if not jobs:
+            print("no timers")
+        return
+    if cmd == "cancel":
+        n = timers.cancel(args[0] if args else "all")
+        print(f"cancelled {n} timer{'s' if n != 1 else ''}")
+        return
+    if run_at:
+        job = timers.schedule(run_at, argv)
+        print(f"will run `lights {' '.join(argv)}` at {timers.describe(run_at)}  [timer {job}]")
+        return
 
     if cmd == "list":
         for n in names:

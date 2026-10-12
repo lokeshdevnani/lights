@@ -74,6 +74,22 @@ that cannot do a command are skipped, for example a colour on a white-only light
 | `fix-ip` | re-find lights whose IP changed and update `devices.toml`; lights that still respond are left alone |
 | `list` | configured lights |
 
+### Run a command later
+
+Add `in` or `at` to the end of any command:
+
+```
+lights lampy red in 30s          # in 30 seconds (units: s, m, h; 1h30m works)
+lights off in 30m                # sleep timer for every light
+lights bulb,lampy warm at 22:30  # at a clock time (24-hour; tomorrow if already past)
+lights timers                    # list what is scheduled
+lights cancel                    # cancel everything, or `lights cancel ID`
+```
+
+Timers run in a detached background process, so they survive closing the terminal. If your
+computer sleeps past the time, the command runs when it wakes. Errors go to
+`~/.cache/lights-timers/error.log`.
+
 Long forms also work: `color NAME|#RRGGBB|R G B`, `brightness N`, `white [KELVIN]`.
 Light names cannot clash with commands or colour names (`devices.toml` is checked on load).
 
