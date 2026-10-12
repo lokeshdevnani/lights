@@ -10,6 +10,7 @@ Settings come from .env next to this script.
 import re
 import socket
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -29,6 +30,14 @@ def load_env():
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip()
     return env
+
+
+def cancel_status_restore():
+    """Your manual change wins over a pending bulb-status restore."""
+    cache = Path.home() / ".cache" / "bulb-status"
+    if cache.exists():
+        (cache / "saved.json").unlink(missing_ok=True)
+        (cache / "latest").write_text(str(time.time_ns()))
 
 
 def find_ip(env):
@@ -80,6 +89,8 @@ def main(argv):
         sys.exit(__doc__)
     if argv[0] == "fix-ip":
         return fix_ip()
+    if argv[0] != "status":
+        cancel_status_restore()
     env = load_env()
     bulb = tinytuya.BulbDevice(
         env["TUYA_DEVICE_ID"], env["TUYA_DEVICE_IP"], env["TUYA_LOCAL_KEY"],

@@ -68,6 +68,10 @@ def restore(bulb):
     if not SAVED.exists():
         return
     dps = json.loads(SAVED.read_text())
+    now = read_dps(bulb)
+    if now and now.get("5") != dps.get("applied"):
+        SAVED.unlink(missing_ok=True)  # changed by hand since: leave it alone
+        return
     if dps.get("2") == "colour":
         bulb.set_value(2, "colour")
         bulb.set_value(5, dps["5"])
@@ -103,6 +107,9 @@ def run(event, token):
                 return  # unreachable or switched off: leave it alone
             SAVED.write_text(json.dumps({k: dps.get(k) for k in "1235"}))
         bulb.set_colour(*COLORS[event])
+        saved = json.loads(SAVED.read_text())
+        saved["applied"] = (read_dps(bulb) or {}).get("5")
+        SAVED.write_text(json.dumps(saved))
 
     if event != "done":
         return
