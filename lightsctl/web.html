@@ -25,6 +25,10 @@
   .dots { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center; }
   .dot { width:36px; height:36px; border-radius:50%; padding:0; border:2px solid #0006; }
   input[type=range] { width:100%; margin-top:12px; accent-color:var(--accent); }
+  input[type=time], select { flex:1; min-width:90px; background:#2c2c2e; color:var(--text); border:0; border-radius:12px;
+                             padding:12px; font-size:16px; }
+  .alarm { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:8px; }
+  .alarm small { color:var(--dim); display:block; }
   input[type=color] { width:36px; height:36px; border:0; padding:0; background:none; }
   #msg { position:fixed; left:16px; right:16px; bottom:16px; background:#000c; color:#fff; padding:10px 14px;
          border-radius:12px; opacity:0; transition:opacity .2s; text-align:center; pointer-events:none; }
@@ -44,6 +48,22 @@
   </div>
 </div>
 <div id="lights"></div>
+<div class="card">
+  <div class="head"><span class="name">Alarms</span></div>
+  <div class="row">
+    <input type="time" id="at" value="07:00">
+    <select id="what">
+      <option value="sunrise 100s">Sunrise 100s</option>
+      <option value="sunrise 5m">Sunrise 5m</option>
+      <option value="sunrise 15m">Sunrise 15m</option>
+      <option value="on">Turn on</option>
+      <option value="off">Turn off</option>
+    </select>
+    <select id="who"><option value="">All lights</option></select>
+  </div>
+  <div class="row"><button class="on" onclick="setAlarm()">Set alarm</button></div>
+  <div id="timers"></div>
+</div>
 <div id="msg"></div>
 <script>
 const COLORS = { red:'#ff2d2d', orange:'#ff8c00', yellow:'#ffd60a', green:'#30d158', cyan:'#00c7ff', blue:'#2f5bff', purple:'#a742ff', pink:'#ff4fa3' };
@@ -60,7 +80,7 @@ async function run(args) {
     const r = await (await fetch('/api/run' + Q, { method:'POST', body: JSON.stringify({ args }) })).json();
     toast(r.output || 'ok', !r.ok);
   } catch (e) { toast('request failed', true); }
-  refresh();
+  refresh(); refreshTimers();
 }
 function card(name, state, caps) {
   const bri = (state.match(/brightness (\d+)/) || [])[1] || 50;
@@ -89,13 +109,37 @@ function card(name, state, caps) {
 async function refresh() {
   try {
     const { lights, caps } = await (await fetch('/api/status' + Q)).json();
+    fillWho(Object.keys(lights));
     const box = document.getElementById('lights');
     if (box.contains(document.activeElement)) return;  // don't rebuild while a control is in use
     box.replaceChildren(...Object.entries(lights).map(([n, s]) => card(n, s, caps[n] || [])));
   } catch (e) {}
 }
-refresh();
+function setAlarm() {
+  const who = document.getElementById('who').value;
+  const at = document.getElementById('at').value;
+  if (!at) return toast('pick a time', true);
+  run((who ? who + ' ' : '') + document.getElementById('what').value + ' at ' + at);
+}
+async function refreshTimers() {
+  try {
+    const { timers } = await (await fetch('/api/timers' + Q)).json();
+    document.getElementById('timers').replaceChildren(...timers.map(t => {
+      const el = document.createElement('div');
+      el.className = 'alarm';
+      el.innerHTML = `<div>${t.at}<small>${t.what}</small></div><button onclick="run('cancel ${t.id}')">Cancel</button>`;
+      return el;
+    }));
+  } catch (e) {}
+}
+function fillWho(names) {
+  const sel = document.getElementById('who');
+  if (sel.options.length > 1) return;
+  names.forEach(n => sel.add(new Option(n, n)));
+}
+refresh(); refreshTimers();
 setInterval(refresh, 15000);
+setInterval(refreshTimers, 15000);
 </script>
 </body>
 </html>

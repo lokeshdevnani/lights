@@ -1,4 +1,5 @@
 """`lights serve`: a small phone-friendly web page that runs the same commands as the CLI."""
+import datetime as dt
 import json
 import re
 import shlex
@@ -8,7 +9,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from . import config
+from . import config, timers
 
 PAGE = config.ROOT / "lightsctl" / "web.html"
 LIGHTS = [sys.executable, str(config.ROOT / "lights")]
@@ -21,7 +22,8 @@ def run_cli(line: str) -> tuple:
     args = shlex.split(line)
     if not args or "serve" in args or "--later" in args:
         return False, "not allowed"
-    if "party" in args or "sunrise" in args:  # long-running: start it and return
+    scheduling = len(args) >= 3 and args[-2] in ("in", "at")  # that just sets a timer and returns
+    if ("party" in args or "sunrise" in args) and not scheduling:  # long-running: start it and return
         if "party" in args and not any(re.fullmatch(r"\d+[smh]", a) for a in args):
             args.append("30s")
         subprocess.Popen([*LIGHTS, *args], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -60,6 +62,10 @@ class Handler(BaseHTTPRequestHandler):
             cfg = config.load()
             caps = {n: sorted(config.make(cfg, n).caps) for n in lights if n in cfg["devices"]}
             return self.send(200, json.dumps({"lights": lights, "caps": caps}), "application/json")
+        if url.path == "/api/timers":
+            jobs = [{"id": j["id"], "at": f"{dt.datetime.fromtimestamp(j['run_at']):%a %H:%M}", "what": " ".join(j["argv"])}
+                    for j in timers.pending()]
+            return self.send(200, json.dumps({"timers": jobs}), "application/json")
         self.send(404, "not found", "text/plain")
 
     def do_POST(self):
