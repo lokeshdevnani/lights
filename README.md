@@ -183,6 +183,30 @@ A backend is one small class in `lightsctl/` that subclasses `Light` (`lightsctl
 .venv/bin/python -m unittest discover -s tests -t .
 ```
 
+## Keep the phone page running (macOS)
+
+`lights serve` stops when you close the terminal or restart. To start it at login and bring it
+back if it dies, save this as `~/Library/LaunchAgents/com.example.lights-serve.plist` (use your
+own paths), then run `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.example.lights-serve.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.example.lights-serve</string>
+  <key>ProgramArguments</key>
+  <array><string>/path/to/lights/.venv/bin/python</string><string>/path/to/lights/lights</string><string>serve</string></array>
+  <key>WorkingDirectory</key><string>/path/to/lights</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+</dict>
+</plist>
+```
+
+It runs when you are logged in, and the Mac must be awake for alarms to fire. The same
+approach keeps a `cloudflared tunnel run` process up.
+
 ## Troubleshooting
 
 - **"Unable to Connect" or timeouts on a Tuya light:** it accepts one local connection at a time.
