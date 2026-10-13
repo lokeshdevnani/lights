@@ -1,17 +1,22 @@
 # lights
 
-Control smart lights from the terminal over your local network. No cloud calls at runtime.
-Works with Tuya / Smart Life lights (Wipro and many others) and the Xiaomi Mi Bedside Lamp 2
-(Yeelight protocol over miIO). Includes an optional status light for Claude Code.
+Control Tuya and Xiaomi smart lights from your terminal and your phone. No cloud, no hub, no account.
 
 ```
-$ lights                  # show every light
-bulb: on, colour (0, 60, 255), brightness 100%
-lampy: off
-$ lights off              # turn everything off
-$ lights lampy orange     # one light, by colour name
-$ lights bulb,lampy 30    # several lights, brightness 30%
+$ lights tube sunrise at 7:00     # wake up gently: 1% to 100% over 100 s
+$ lights lampy orange             # one light, by colour name
+$ lights bulb,lampy 30            # several lights, brightness 30%
+$ lights party 30s                # random colours, then everything is put back
+$ lights serve                    # a page like this for your phone
 ```
+
+<img src="docs/phone.jpg" alt="The phone page: one card per light, plus alarms" width="300">
+
+- **Local.** Commands go straight to the lights over your Wi-Fi, so it works when the internet is down.
+- **One tool for different brands.** Tuya / Smart Life lights (Wipro and many others, including white-only tubelights) and the Xiaomi Mi Bedside Lamp 2 (Yeelight protocol over miIO).
+- **Phone page.** Colours, brightness, warmth, a sunrise button and one-off alarms. Put it behind your own tunnel to use it away from home.
+- **Small.** Plain Python, no framework. Or paste one prompt into Claude Code and let it do the setup.
+- Also: an optional light that shows what Claude Code is doing.
 
 ## Quick start with Claude Code
 
