@@ -10,7 +10,9 @@ $ lights party 30s                # random colours, then everything is put back
 $ lights serve                    # a page like this for your phone
 ```
 
-<img src="docs/phone.jpg" alt="The phone page: one card per light, plus alarms" width="300">
+<p align="center">
+  <img src="docs/phone.jpg" alt="The phone page: one card per light, plus alarms" width="320">
+</p>
 
 - **Local.** Commands go straight to the lights over your Wi-Fi, so it works when the internet is down.
 - **One tool for different brands.** Tuya / Smart Life lights (Wipro and many others, including white-only tubelights) and the Xiaomi Mi Bedside Lamp 2 (Yeelight protocol over miIO).
