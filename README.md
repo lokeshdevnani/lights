@@ -49,6 +49,11 @@ and is gitignored.
 - Local key: a QR login through the Smart Life app works without a Tuya cloud project, for
   example [tuya-local-key](https://github.com/vineetchoudhary/tuya-local-key).
 
+**Tuya white-only light** (e.g. a Wipro tubelight): same ID, IP and key as above, but use
+`type = "tuya-white"` and the version `tinytuya scan` reports. It supports on/off, brightness and
+warm/neutral/cool (or kelvin). If the QR login rejects the vendor's own app (Wipro), re-pair the
+light in Smart Life first.
+
 **Mi Bedside Lamp 2**: needs the lamp's IP, numeric device ID (`did`) and token. Get the token with
 [Xiaomi-cloud-tokens-extractor](https://github.com/PiotrMachowski/Xiaomi-cloud-tokens-extractor)
 using QR login. Leave its server prompt empty to check every region, because the lamp may be on

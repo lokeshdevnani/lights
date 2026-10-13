@@ -57,7 +57,9 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/status":
             ok, out = run_cli("status")
             lights = {m[1]: m[2] for m in re.finditer(r"^(\w+): (.*)$", out, re.M)}
-            return self.send(200, json.dumps({"lights": lights}), "application/json")
+            cfg = config.load()
+            colour = {n: "color" in config.make(cfg, n).caps for n in lights if n in cfg["devices"]}
+            return self.send(200, json.dumps({"lights": lights, "color": colour}), "application/json")
         self.send(404, "not found", "text/plain")
 
     def do_POST(self):

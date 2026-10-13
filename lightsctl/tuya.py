@@ -121,3 +121,43 @@ class TuyaLight(Light):
                 if ip:
                     return ip
         return None
+
+
+class TuyaWhiteLight(TuyaLight):
+    """Tuya tubelight with warm-to-cool white only (data points 20-23, 0-1000 scales)."""
+    caps = frozenset({"brightness", "kelvin"})
+    kelvin_range = (2700, 6500)  # assumed ends of the 0-1000 colour-temperature scale
+
+    def on(self): self._set(20, True)
+    def off(self): self._set(20, False)
+
+    def brightness(self, pct: int):
+        self._set(22, round(10 + 990 * (max(1, min(100, pct)) - 1) / 99))
+
+    def white(self, kelvin=None):
+        lo, hi = self.kelvin_range
+        k = max(lo, min(hi, kelvin or 4000))
+        self._set(23, round((k - lo) * 1000 / (hi - lo)))
+
+    def status(self) -> dict:
+        dps = self._dps()
+        lo, hi = self.kelvin_range
+        return {
+            "on": bool(dps.get("20")),
+            "mode": "white",
+            "rgb": None,
+            "brightness": max(1, min(100, round((dps.get("22", 1000) - 10) * 99 / 990) + 1)),
+            "kelvin": round(lo + (hi - lo) * dps.get("23", 0) / 1000),
+        }
+
+    def snapshot(self) -> dict:
+        dps = self._dps()
+        return {k: dps.get(k) for k in ("20", "22", "23")}
+
+    def restore(self, snap: dict):
+        self._set(22, snap["22"])
+        self._set(23, snap["23"])
+
+    def fingerprint(self) -> str:
+        dps = self._dps()
+        return f"{dps.get('22')}:{dps.get('23')}"

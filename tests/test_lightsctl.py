@@ -5,8 +5,8 @@ from pathlib import Path
 import datetime as dt
 
 from lightsctl import cli, config, effects, timers
-from lightsctl.base import parse_color, parse_kelvin
-from lightsctl.tuya import dp_to_white, hex_to_rgb, rgb_to_hex, white_to_dp
+from lightsctl.base import Unsupported, parse_color, parse_kelvin
+from lightsctl.tuya import TuyaWhiteLight, dp_to_white, hex_to_rgb, rgb_to_hex, white_to_dp
 
 
 class ParseTests(unittest.TestCase):
@@ -113,6 +113,26 @@ class TuyaEncodingTests(unittest.TestCase):
         self.assertEqual(white_to_dp(1), 27)
         self.assertEqual(dp_to_white(255), 100)
         self.assertEqual(dp_to_white(white_to_dp(50)), 50)
+
+
+class TuyaWhiteTests(unittest.TestCase):
+    def light(self):
+        l = TuyaWhiteLight("t", {})
+        l.sent = []
+        l._set = lambda dp, v: l.sent.append((dp, v))
+        return l
+
+    def test_white_sets_temperature_scale(self):
+        l = self.light()
+        l.white(2700); l.white(6500); l.white(4600)
+        self.assertEqual(l.sent, [(23, 0), (23, 1000), (23, 500)])
+
+    def test_brightness_scale_and_no_colour(self):
+        l = self.light()
+        l.brightness(1); l.brightness(100)
+        self.assertEqual(l.sent, [(22, 10), (22, 1000)])
+        with self.assertRaises(Unsupported):
+            l.require("color")
 
 
 class ConfigTests(unittest.TestCase):
