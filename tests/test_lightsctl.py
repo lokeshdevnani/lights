@@ -149,6 +149,15 @@ class SunriseTests(unittest.TestCase):
         self.assertEqual(light.log[4:], list(range(2, 101)))
 
 
+class RunningShowTests(unittest.TestCase):
+    def test_show_is_listed_while_running_and_gone_after(self):
+        with tempfile.TemporaryDirectory() as d:
+            timers.RUNNING = Path(d)
+            with timers.running_as("sunrise 100s on tube"):
+                self.assertEqual([r["what"] for r in timers.running()], ["sunrise 100s on tube"])
+            self.assertEqual(timers.running(), [])
+
+
 class ConfigTests(unittest.TestCase):
     def test_update_ip_only_touches_that_device(self):
         text = '[devices.a]\nip = "1.1.1.1"\n\n[devices.b]\nip = "2.2.2.2"\nkey = "k"\n'

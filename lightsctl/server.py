@@ -65,7 +65,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/timers":
             jobs = [{"id": j["id"], "at": f"{dt.datetime.fromtimestamp(j['run_at']):%a %H:%M}", "what": " ".join(j["argv"])}
                     for j in timers.pending()]
-            return self.send(200, json.dumps({"timers": jobs}), "application/json")
+            shows = [{"what": r["what"], "since": r["started"]} for r in timers.running()]
+            return self.send(200, json.dumps({"timers": jobs, "running": shows}), "application/json")
         self.send(404, "not found", "text/plain")
 
     def do_POST(self):

@@ -1,5 +1,6 @@
 """Run a lights command later: `lights lampy red in 30s`, `lights off at 22:30`."""
 import datetime as dt
+import contextlib
 import json
 import os
 import re
@@ -13,6 +14,7 @@ from pathlib import Path
 from . import config
 
 JOBS = Path.home() / ".cache" / "lights-timers"
+RUNNING = Path.home() / ".cache" / "lights-running"
 UNITS = {"h": 3600, "m": 60, "s": 1}
 
 
@@ -99,3 +101,40 @@ def describe(run_at: float) -> str:
     m, s = divmod(rem, 60)
     span = (f"{h}h" if h else "") + (f"{m}m" if m else "") + (f"{s}s" if s or not (h or m) else "")
     return f"{dt.datetime.fromtimestamp(run_at):%H:%M:%S} (in {span})"
+
+
+@contextlib.contextmanager
+def running_as(what: str):
+    """Record this process as a running show (sunrise, party) so `lights stop` can end it.
+
+    SIGTERM is turned into Ctrl-C, so the show restores or leaves the lights the same way."""
+    RUNNING.mkdir(parents=True, exist_ok=True)
+    f = RUNNING / f"{os.getpid()}.json"
+    f.write_text(json.dumps({"pid": os.getpid(), "what": what, "started": time.time()}))
+
+    def on_term(*_):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, on_term)
+    try:
+        yield
+    finally:
+        f.unlink(missing_ok=True)
+
+
+def running() -> list:
+    shows = []
+    for f in sorted(RUNNING.glob("*.json")) if RUNNING.exists() else []:
+        info = json.loads(f.read_text())
+        if _alive(info["pid"]):
+            shows.append(info)
+        else:
+            f.unlink(missing_ok=True)
+    return shows
+
+
+def stop() -> int:
+    shows = running()
+    for info in shows:
+        os.kill(info["pid"], signal.SIGTERM)
+    return len(shows)

@@ -47,6 +47,7 @@
     <button onclick="run('sunrise')">Sunrise</button>
   </div>
 </div>
+<div id="running"></div>
 <div id="lights"></div>
 <div class="card">
   <div class="head"><span class="name">Alarms</span></div>
@@ -123,7 +124,13 @@ function setAlarm() {
 }
 async function refreshTimers() {
   try {
-    const { timers } = await (await fetch('/api/timers' + Q)).json();
+    const { timers, running } = await (await fetch('/api/timers' + Q)).json();
+    document.getElementById('running').replaceChildren(...running.map(r => {
+      const el = document.createElement('div');
+      el.className = 'card alarm';
+      el.innerHTML = `<div><b>Running</b><small>${r.what}</small></div><button class="on" onclick="run('stop')">Stop</button>`;
+      return el;
+    }));
     document.getElementById('timers').replaceChildren(...timers.map(t => {
       const el = document.createElement('div');
       el.className = 'alarm';
@@ -139,7 +146,7 @@ function fillWho(names) {
 }
 refresh(); refreshTimers();
 setInterval(refresh, 15000);
-setInterval(refreshTimers, 15000);
+setInterval(refreshTimers, 4000);
 </script>
 </body>
 </html>
