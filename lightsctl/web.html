@@ -112,7 +112,8 @@ async function refresh() {
     const { lights, caps } = await (await fetch('/api/status' + Q)).json();
     fillWho(Object.keys(lights));
     const box = document.getElementById('lights');
-    if (box.contains(document.activeElement)) return;  // don't rebuild while a control is in use
+    const a = document.activeElement;
+    if (a && a.tagName === 'INPUT' && box.contains(a)) return;  // don't rebuild while a slider or picker is in use
     box.replaceChildren(...Object.entries(lights).map(([n, s]) => card(n, s, caps[n] || [])));
   } catch (e) {}
 }
