@@ -17,6 +17,10 @@
   .hero .allon { background:var(--accent); color:#000; }
   .hero .alloff { background:#2c2c2e; box-shadow:inset 0 0 0 1.5px #48484a; }
   #summary { color:var(--dim); font-size:13px; text-align:center; margin-bottom:14px; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .pair button { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 0; font-weight:600; border-radius:16px; }
+  .pair svg { color:var(--accent); }
+  .sep { flex:none; width:1px; background:#3a3a3c; margin:4px 2px; }
   .chips { display:flex; gap:8px; overflow-x:auto; margin:4px 0 16px; padding-bottom:2px; scrollbar-width:none; }
   .chips::-webkit-scrollbar { display:none; }
   .chips button { white-space:nowrap; border-radius:999px; padding:10px 16px; flex:none; }
@@ -52,18 +56,18 @@
   <button class="alloff" onclick="run('off')">All off</button>
 </div>
 <div id="summary"></div>
-<div class="chips" id="scenes"></div>
+<div class="pair">
+  <button onclick="run('sunrise')"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19h18"/><path d="M7 19a5 5 0 0 1 10 0"/><path d="M12 3v7"/><path d="m9 6 3-3 3 3"/></svg><span>Sunrise</span></button>
+  <button onclick="run('sunset')"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19h18"/><path d="M7 19a5 5 0 0 1 10 0"/><path d="M12 3v7"/><path d="m9 7 3 3 3-3"/></svg><span>Sunset</span></button>
+</div>
+<div class="chips">
+  <span id="scenes" style="display:contents"></span>
+  <i class="sep"></i>
+  <button onclick="run('party 30s')">Party</button>
+  <button onclick="run('pomodoro')">Pomodoro</button>
+</div>
 <div id="running"></div>
 <div id="lights"></div>
-<details class="card">
-  <summary>Shows</summary>
-  <div class="row">
-    <button onclick="run('party 30s')">Party 30s</button>
-    <button onclick="run('sunrise')">Sunrise</button>
-    <button onclick="run('sunset')">Sunset</button>
-    <button onclick="run('pomodoro')">Pomodoro</button>
-  </div>
-</details>
 <div class="card">
   <div class="head"><span class="name">Alarms</span></div>
   <div class="row">
