@@ -14,8 +14,8 @@ def party_color(previous_hue: float = None) -> tuple:
     return tuple(round(c * 255) for c in colorsys.hsv_to_rgb(hue, 1, 1)), hue
 
 
-def party(lights: list, duration: float = None, interval: float = 1.0) -> None:
-    """Change every light to a new random colour each `interval` seconds."""
+def _save(lights: list) -> tuple:
+    """Remember each light's state; returns (reachable lights, {name: (was_on, snapshot)})."""
     before = {}
     for light in lights:
         try:
@@ -26,6 +26,22 @@ def party(lights: list, duration: float = None, interval: float = 1.0) -> None:
     lights = [l for l in lights if l.name in before]
     if not lights:
         raise ConnectionError("no light reachable")
+    return lights, before
+
+
+def _restore(lights: list, before: dict) -> None:
+    print("\nrestoring...")
+    for light in lights:
+        was_on, snap = before[light.name]
+        try:
+            light.restore(snap) if was_on else light.off()
+        except Exception as e:
+            print(f"{light.name}: could not restore ({e})")
+
+
+def party(lights: list, duration: float = None, interval: float = 1.0) -> None:
+    """Change every light to a new random colour each `interval` seconds."""
+    lights, before = _save(lights)
 
     for light in lights:  # full brightness: some lights remember a dim level from earlier
         try:
@@ -49,13 +65,37 @@ def party(lights: list, duration: float = None, interval: float = 1.0) -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        print("\nrestoring...")
-        for light in lights:
-            was_on, snap = before[light.name]
-            try:
-                light.restore(snap) if was_on else light.off()
-            except Exception as e:
-                print(f"{light.name}: could not restore ({e})")
+        _restore(lights, before)
+
+
+def pomodoro(lights: list, focus: float = 1500, rest: float = 300, rounds: int = 4) -> None:
+    """Focus (red, or cool white) then break (green, or warm white), `rounds` times; then restore the lights."""
+    lights, before = _save(lights)
+
+    def show(phase: str) -> None:
+        def one(light):
+            light.on()
+            if "color" in light.caps:
+                light.color((255, 0, 0) if phase == "focus" else (0, 255, 0))
+                light.brightness(100)
+            else:
+                light.white(6500 if phase == "focus" else 2700)
+                light.brightness(100 if phase == "focus" else 40)
+        with ThreadPoolExecutor(len(lights)) as pool:
+            list(pool.map(lambda l: _try(one, l), lights))
+
+    try:
+        for n in range(1, rounds + 1):
+            print(f"round {n}/{rounds}: focus")
+            show("focus")
+            time.sleep(focus)
+            print(f"round {n}/{rounds}: break")
+            show("break")
+            time.sleep(rest)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        _restore(lights, before)
 
 
 def sunrise(lights: list, duration: float = 100, warm: int = 2700) -> None:

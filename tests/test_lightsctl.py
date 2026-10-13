@@ -149,6 +149,31 @@ class SunriseTests(unittest.TestCase):
         self.assertEqual(light.log[4:], list(range(2, 101)))
 
 
+class PomodoroTests(unittest.TestCase):
+    def fake(self, caps):
+        class Fake:
+            name = "f"
+            def __init__(self): self.log = []
+            def status(self): return {"on": True}
+            def snapshot(self): return {"s": 1}
+            def restore(self, snap): self.log.append("restore")
+            def on(self): pass
+            def color(self, rgb): self.log.append(rgb)
+            def white(self, k=None): self.log.append(k)
+            def brightness(self, pct): pass
+        f = Fake(); f.caps = frozenset(caps); return f
+
+    def test_colour_light_goes_red_then_green_then_restores(self):
+        light = self.fake({"color", "brightness"})
+        effects.pomodoro([light], focus=0, rest=0, rounds=2)
+        self.assertEqual(light.log, [(255, 0, 0), (0, 255, 0)] * 2 + ["restore"])
+
+    def test_white_only_light_goes_cool_then_warm(self):
+        light = self.fake({"kelvin", "brightness"})
+        effects.pomodoro([light], focus=0, rest=0, rounds=1)
+        self.assertEqual(light.log, [6500, 2700, "restore"])
+
+
 class RunningShowTests(unittest.TestCase):
     def test_show_is_listed_while_running_and_gone_after(self):
         with tempfile.TemporaryDirectory() as d:

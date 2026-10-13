@@ -23,7 +23,7 @@ def run_cli(line: str) -> tuple:
     if not args or "serve" in args or "--later" in args:
         return False, "not allowed"
     scheduling = len(args) >= 3 and args[-2] in ("in", "at")  # that just sets a timer and returns
-    if ("party" in args or "sunrise" in args) and not scheduling:  # long-running: start it and return
+    if ("party" in args or "sunrise" in args or "pomodoro" in args) and not scheduling:  # long-running: start it and return
         if "party" in args and not any(re.fullmatch(r"\d+[smh]", a) for a in args):
             args.append("30s")
         subprocess.Popen([*LIGHTS, *args], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
