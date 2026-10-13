@@ -15,11 +15,11 @@ $ lights serve                    # a page like this for your phone
 - **Local.** Commands go straight to the lights over your Wi-Fi, so it works when the internet is down.
 - **One tool for different brands.** Tuya / Smart Life lights (Wipro and many others, including white-only tubelights) and the Xiaomi Mi Bedside Lamp 2 (Yeelight protocol over miIO).
 - **Timers and a pomodoro.** Add `in 25m` or `at 22:30` to any command, or run `lights lampy pomodoro` for red focus and green breaks on the light you choose. The phone page has both.
-- **Phone page.** Colours, brightness, warmth, a sunrise button and one-off alarms. Put it behind your own tunnel to use it away from home.
+- **Phone page.** Colours, brightness, warmth, sunrise and sunset, scene buttons and one-off alarms. Put it behind your own tunnel to use it away from home.
 - **Small.** Plain Python, no framework. Or paste one prompt into Claude Code and let it do the setup.
 - Also: an optional light that shows what Claude Code is doing.
 
-## Timers and pomodoro
+## Timers, pomodoro and scenes
 
 ```
 $ lights tube off in 45m                        # sleep timer
@@ -27,6 +27,8 @@ $ lights tube sunrise at 7:00                   # alarm: wakes you over 100 s
 $ lights lampy pomodoro                         # focus (red) 25m, break (green) 5m, 4 rounds
 $ lights lampy,tube pomodoro 50m 10m 3          # pick the lights, lengths and rounds
 $ lights lampy pomodoro at 9:00                 # start it later
+$ lights tube sunset                            # fade out and switch off over 30m
+$ lights scene movie                            # a named preset; define your own in devices.toml
 $ lights timers                                 # what is scheduled; `lights cancel` clears it
 ```
 
@@ -92,6 +94,8 @@ that cannot do a command are skipped, for example a colour on a white-only light
 | `orange`, `#ff8800` | colour by name or hex (red green blue yellow orange purple pink cyan) |
 | `30`, `30%` | brightness 1-100 |
 | `pomodoro [FOCUS [BREAK [ROUNDS]]]` | focus/break cycles, default `25m 5m 4`: red then green on colour lights, cool then warm white on white-only ones. The lights are put back at the end or on Stop |
+| `sunset [DURATION]` | fade the lights that are on down to 1% and switch them off, 30 minutes by default |
+| `scene NAME` | run a preset from the `[scenes]` table in `devices.toml` (each entry is a list of normal commands); `lights scene` lists them |
 | `sunrise [DURATION]` | wake-up ramp: warm white from 1% to 100% in 100 s (or e.g. `5m`); `lights tube sunrise at 7:00`. Ctrl-C leaves the light as it is |
 | `warmth 0-100` | warm-to-cool on a percentage scale, 100 = warmest (only where supported) |
 | `warm`, `neutral`, `cool`, `3000k` | white temperature (only where supported, e.g. the Mi lamp, 1700-6500 K) |

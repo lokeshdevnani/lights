@@ -45,9 +45,11 @@
     <button onclick="run('off')">Off</button>
     <button onclick="run('party 30s')">Party 30s</button>
     <button onclick="run('sunrise')">Sunrise</button>
+    <button onclick="run('sunset')">Sunset</button>
     <button onclick="run('pomodoro')">Pomodoro</button>
   </div>
 </div>
+<div id="scenes" class="row"></div>
 <div id="running"></div>
 <div id="lights"></div>
 <div class="card">
@@ -59,6 +61,7 @@
       <option value="sunrise 5m">Sunrise 5m</option>
       <option value="sunrise 15m">Sunrise 15m</option>
       <option value="pomodoro">Pomodoro 25/5</option>
+      <option value="sunset 30m">Sunset 30m</option>
       <option value="on">Turn on</option>
       <option value="off">Turn off</option>
     </select>
@@ -111,8 +114,14 @@ function card(name, state, caps) {
 }
 async function refresh() {
   try {
-    const { lights, caps } = await (await fetch('/api/status' + Q)).json();
+    const { lights, caps, scenes } = await (await fetch('/api/status' + Q)).json();
     fillWho(Object.keys(lights));
+    document.getElementById('scenes').replaceChildren(...scenes.map(n => {
+      const b = document.createElement('button');
+      b.textContent = n;
+      b.onclick = () => run('scene ' + n);
+      return b;
+    }));
     const box = document.getElementById('lights');
     const a = document.activeElement;
     if (a && a.tagName === 'INPUT' && box.contains(a)) return;  // don't rebuild while a slider or picker is in use

@@ -4,7 +4,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import config, effects, timers
+from . import config, effects, scenes, timers
 from .base import COMMANDS, KELVIN_NAMES, Unsupported, parse_color, parse_kelvin
 
 USAGE = """\
@@ -20,6 +20,8 @@ Usage: lights [LIGHT[,LIGHT...]] [COMMAND]
   lights lampy white        plain white mode
 
 Wake:   lights tube sunrise [DURATION]   1% to 100% in warm white over 100s (or e.g. 5m); lights sunrise at 7:00
+Sleep:  lights tube sunset [DURATION]   fade out and switch off over 30m by default
+Scene:  lights scene NAME   run a named preset from [scenes] in devices.toml (lights scene: list them)
 Focus:  lights lampy pomodoro [FOCUS [BREAK [ROUNDS]]]   red focus, green break (25m, 5m, 4 rounds by default)
 Show:   lights party [DURATION]   random colours until Ctrl-C (or for e.g. 30s, 2m); restores the lights after.
 Later:  add `in 30s|5m|1h30m` or `at 22:30` to any command:  lights lampy red in 30s,  lights off at 22:30
@@ -183,6 +185,26 @@ def main(argv: list) -> None:
             print(f"sunrise on {', '.join(l.name for l in lights)} over {seconds}s. Ctrl-C to stop.")
             with timers.running_as(f"sunrise {seconds}s on {', '.join(l.name for l in lights)}"):
                 effects.sunrise(lights, seconds)
+            return
+    if cmd == "scene" and run_at is None:
+        if not args:
+            print("scenes: " + (", ".join(scenes.names(cfg)) or "none defined (add a [scenes] table to devices.toml)"))
+            return
+        try:
+            print(f"scene {args[0]}: {scenes.run(cfg, args[0])}")
+        except (ValueError, RuntimeError) as e:
+            sys.exit(str(e))
+        return
+    if cmd == "sunset":
+        lights = [config.make(cfg, n) for n in targets if "brightness" in config.make(cfg, n).caps]
+        if not lights:
+            sys.exit("none of the selected lights can change brightness")
+        seconds = timers.parse_duration(args[0]) if args else 1800
+        if run_at is None:
+            cancel_status_restore() if config.status_name(cfg) in targets else None
+            print(f"sunset on {', '.join(l.name for l in lights)} over {seconds}s. Ctrl-C to stop.")
+            with timers.running_as(f"sunset {seconds // 60}m on {', '.join(l.name for l in lights)}"):
+                effects.sunset(lights, seconds)
             return
     if cmd == "pomodoro":
         durations = [timers.parse_duration(a) for a in args[:2]]

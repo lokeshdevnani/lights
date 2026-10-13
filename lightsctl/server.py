@@ -9,7 +9,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from . import config, timers
+from . import config, scenes, timers
 
 PAGE = config.ROOT / "lightsctl" / "web.html"
 LIGHTS = [sys.executable, str(config.ROOT / "lights")]
@@ -23,7 +23,7 @@ def run_cli(line: str) -> tuple:
     if not args or "serve" in args or "--later" in args:
         return False, "not allowed"
     scheduling = len(args) >= 3 and args[-2] in ("in", "at")  # that just sets a timer and returns
-    if ("party" in args or "sunrise" in args or "pomodoro" in args) and not scheduling:  # long-running: start it and return
+    if any(w in args for w in ("party", "sunrise", "sunset", "pomodoro")) and not scheduling:  # long-running: start it and return
         if "party" in args and not any(re.fullmatch(r"\d+[smh]", a) for a in args):
             args.append("30s")
         subprocess.Popen([*LIGHTS, *args], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -61,7 +61,7 @@ class Handler(BaseHTTPRequestHandler):
             lights = {m[1]: m[2] for m in re.finditer(r"^(\w+): (.*)$", out, re.M)}
             cfg = config.load()
             caps = {n: sorted(config.make(cfg, n).caps) for n in lights if n in cfg["devices"]}
-            return self.send(200, json.dumps({"lights": lights, "caps": caps}), "application/json")
+            return self.send(200, json.dumps({"lights": lights, "caps": caps, "scenes": scenes.names(cfg)}), "application/json")
         if url.path == "/api/timers":
             jobs = [{"id": j["id"], "at": f"{dt.datetime.fromtimestamp(j['run_at']):%a %H:%M}", "what": " ".join(j["argv"])}
                     for j in timers.pending()]

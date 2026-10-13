@@ -25,3 +25,9 @@ did = "your_device_id"      # numeric id; lets `fix-ip` find it again
 ip = "192.168.0.x"
 token = "your_32_char_token"
 model = "yeelink.light.bslamp2"
+
+# Scenes: `lights scene night`. Each line is a normal lights command; lines for
+# different lights run together. Use your own light names.
+[scenes]
+night = ["tube warmth 100", "tube 10", "lampy off", "bulb off"]
+movie = ["tube warmth 90", "tube 15", "lampy orange", "lampy 20", "bulb off"]

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import datetime as dt
 
-from lightsctl import cli, config, effects, timers
+from lightsctl import cli, config, effects, scenes, timers
 from lightsctl.base import Unsupported, parse_color, parse_kelvin
 from lightsctl.tuya import TuyaWhiteLight, dp_to_white, hex_to_rgb, rgb_to_hex, white_to_dp
 
@@ -172,6 +172,34 @@ class PomodoroTests(unittest.TestCase):
         light = self.fake({"kelvin", "brightness"})
         effects.pomodoro([light], focus=0, rest=0, rounds=1)
         self.assertEqual(light.log, [6500, 2700, "restore"])
+
+
+class SceneTests(unittest.TestCase):
+    cfg = {"scenes": {"night": ["tube warmth 100", "tube 10"], "bad": ["party 5s"]}}
+
+    def test_lists_and_looks_up_scenes(self):
+        self.assertEqual(scenes.names(self.cfg), ["night", "bad"])
+        self.assertEqual(scenes.lines(self.cfg, "night"), ["tube warmth 100", "tube 10"])
+        with self.assertRaises(ValueError):
+            scenes.lines(self.cfg, "nope")
+
+    def test_long_running_commands_are_refused(self):
+        with self.assertRaises(ValueError):
+            scenes.run(self.cfg, "bad")
+
+
+class SunsetTests(unittest.TestCase):
+    def test_fades_down_to_one_percent_then_off(self):
+        class Fake:
+            name, caps = "f", frozenset({"brightness"})
+            def __init__(self): self.log = []
+            def status(self): return {"on": True, "brightness": 40}
+            def brightness(self, pct): self.log.append(pct)
+            def off(self): self.log.append("off")
+        light = Fake()
+        effects.sunset([light], duration=0.1)
+        self.assertEqual(light.log[-2:], [1, "off"])
+        self.assertEqual(light.log[:-1], sorted(light.log[:-1], reverse=True))
 
 
 class RunningShowTests(unittest.TestCase):

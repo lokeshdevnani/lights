@@ -98,6 +98,32 @@ def pomodoro(lights: list, focus: float = 1500, rest: float = 300, rounds: int =
         _restore(lights, before)
 
 
+def sunset(lights: list, duration: float = 1800) -> None:
+    """Fade every light that is on from its current brightness down to 1%, then switch it off."""
+    start = {}
+    for light in lights:
+        try:
+            st = light.status()
+            if st["on"]:
+                start[light.name] = st["brightness"] or 100
+        except Exception as e:
+            print(f"{light.name}: can't read state ({e}); leaving it out")
+    lights = [l for l in lights if l.name in start]
+    if not lights:
+        print("nothing is on")
+        return
+    steps = max(1, min(100, max(start.values()) - 1))
+    with ThreadPoolExecutor(len(lights)) as pool:
+        t0 = time.time()
+        try:
+            for i in range(1, steps + 1):
+                time.sleep(max(0.0, t0 + i * duration / steps - time.time()))
+                list(pool.map(lambda l: _try(l.brightness, max(1, round(start[l.name] * (1 - i / steps)))), lights))
+            list(pool.map(lambda l: _try(lambda _: l.off(), None), lights))
+        except KeyboardInterrupt:
+            print("\nstopped; lights left as they are")
+
+
 def sunrise(lights: list, duration: float = 100, warm: int = 2700) -> None:
     """Start at 1% in warm white and rise to 100% over `duration` seconds. Ctrl-C leaves the lights as they are."""
     def prepare(light):
