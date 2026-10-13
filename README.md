@@ -7,6 +7,7 @@ $ lights tube sunrise at 7:00     # wake up gently: 1% to 100% over 100 s
 $ lights lampy orange             # one light, by colour name
 $ lights bulb,lampy 30            # several lights, brightness 30%
 $ lights party 30s                # random colours, then everything is put back
+$ lights tube off in 45m          # a sleep timer; also: at 22:30
 $ lights serve                    # a page like this for your phone
 ```
 
@@ -14,6 +15,7 @@ $ lights serve                    # a page like this for your phone
 
 - **Local.** Commands go straight to the lights over your Wi-Fi, so it works when the internet is down.
 - **One tool for different brands.** Tuya / Smart Life lights (Wipro and many others, including white-only tubelights) and the Xiaomi Mi Bedside Lamp 2 (Yeelight protocol over miIO).
+- **Timers.** Add `in 25m` or `at 22:30` to any command, and it runs later. Sleep timers, wake-up alarms, and a pomodoro: `lights lampy red && lights lampy green in 25m && lights lampy red in 30m` is red to focus, green for the break, red again.
 - **Phone page.** Colours, brightness, warmth, a sunrise button and one-off alarms. Put it behind your own tunnel to use it away from home.
 - **Small.** Plain Python, no framework. Or paste one prompt into Claude Code and let it do the setup.
 - Also: an optional light that shows what Claude Code is doing.
