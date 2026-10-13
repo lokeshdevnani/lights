@@ -12,6 +12,11 @@
   body { margin:0; padding:16px; padding-bottom:40px; background:var(--bg); color:var(--text);
          font:16px -apple-system, system-ui, sans-serif; max-width:520px; margin-inline:auto; }
   h1 { font-size:22px; margin:8px 0 16px; }
+  .chips { display:flex; gap:8px; overflow-x:auto; margin:4px 0 16px; padding-bottom:2px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chips button { white-space:nowrap; border-radius:999px; padding:10px 16px; flex:none; }
+  summary { font-weight:600; font-size:18px; cursor:pointer; }
+  details[open] summary { margin-bottom:0; }
   .card { background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px; }
   .head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .name { font-weight:600; font-size:18px; }
@@ -37,21 +42,22 @@
 </style>
 </head>
 <body>
-<h1>Lights</h1>
-<div class="card">
-  <div class="head"><span class="name">All lights</span></div>
+<div class="chips" id="chips">
+  <button onclick="run('on')">All on</button>
+  <button onclick="run('off')">All off</button>
+  <span id="scenes" style="display:contents"></span>
+</div>
+<div id="running"></div>
+<div id="lights"></div>
+<details class="card">
+  <summary>Shows</summary>
   <div class="row">
-    <button onclick="run('on')">On</button>
-    <button onclick="run('off')">Off</button>
     <button onclick="run('party 30s')">Party 30s</button>
     <button onclick="run('sunrise')">Sunrise</button>
     <button onclick="run('sunset')">Sunset</button>
     <button onclick="run('pomodoro')">Pomodoro</button>
   </div>
-</div>
-<div id="scenes" class="row"></div>
-<div id="running"></div>
-<div id="lights"></div>
+</details>
 <div class="card">
   <div class="head"><span class="name">Alarms</span></div>
   <div class="row">
@@ -108,7 +114,6 @@ function card(name, state, caps) {
       <button onclick="run('${name} warm')">Warm</button>
       <button onclick="run('${name} neutral')">Neutral</button>
       <button onclick="run('${name} cool')">Cool</button>
-      <button onclick="run('${name} sunrise')">Sunrise</button>
     </div>`;
   return el;
 }
