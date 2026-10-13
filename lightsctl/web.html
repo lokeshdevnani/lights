@@ -61,7 +61,8 @@ async function run(args) {
   } catch (e) { toast('request failed', true); }
   refresh();
 }
-function card(name, state, color) {
+function card(name, state, caps) {
+  const bri = (state.match(/brightness (\d+)/) || [])[1] || 50;
   const on = !state.startsWith('off') && !state.includes('error');
   const el = document.createElement('div');
   el.className = 'card';
@@ -70,11 +71,12 @@ function card(name, state, color) {
       <div><div class="name">${name}</div><div class="state">${state}</div></div>
       <button class="${on ? 'on' : ''}" onclick="run('${name} toggle')">${on ? 'On' : 'Off'}</button>
     </div>
-    ${color ? `<div class="dots">
+    ${caps.includes('color') ? `<div class="dots">
       ${Object.entries(COLORS).map(([c, hex]) => `<button class="dot" style="background:${hex}" aria-label="${c}" onclick="run('${name} ${c}')"></button>`).join('')}
       <input type="color" aria-label="custom colour" onchange="run('${name} ' + this.value)">
     </div>` : ''}
-    <input type="range" min="1" max="100" aria-label="brightness" onchange="run('${name} ' + this.value)">
+    <input type="range" min="1" max="100" value="${bri}" aria-label="brightness" onchange="run('${name} ' + this.value)">
+    ${caps.includes('kelvin') ? `<input type="range" min="0" max="100" aria-label="warmth (right is warmer)" onchange="run('${name} warmth ' + this.value)">` : ''}
     <div class="row">
       <button onclick="run('${name} warm')">Warm</button>
       <button onclick="run('${name} neutral')">Neutral</button>
@@ -84,10 +86,10 @@ function card(name, state, color) {
 }
 async function refresh() {
   try {
-    const { lights, color } = await (await fetch('/api/status' + Q)).json();
+    const { lights, caps } = await (await fetch('/api/status' + Q)).json();
     const box = document.getElementById('lights');
     if (box.contains(document.activeElement)) return;  // don't rebuild while a control is in use
-    box.replaceChildren(...Object.entries(lights).map(([n, s]) => card(n, s, color[n] !== false)));
+    box.replaceChildren(...Object.entries(lights).map(([n, s]) => card(n, s, caps[n] || [])));
   } catch (e) {}
 }
 refresh();
