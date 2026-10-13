@@ -135,6 +135,20 @@ class TuyaWhiteTests(unittest.TestCase):
             l.require("color")
 
 
+class SunriseTests(unittest.TestCase):
+    def test_ramps_one_percent_per_step_from_warm_white(self):
+        class Fake:
+            name, caps = "f", frozenset({"brightness", "kelvin"})
+            def __init__(self): self.log = []
+            def on(self): self.log.append("on")
+            def white(self, k=None): self.log.append(("white", k))
+            def brightness(self, pct): self.log.append(pct)
+        light = Fake()
+        effects.sunrise([light], duration=0.2)
+        self.assertEqual(light.log[:4], [1, "on", ("white", 2700), 1])
+        self.assertEqual(light.log[4:], list(range(2, 101)))
+
+
 class ConfigTests(unittest.TestCase):
     def test_update_ip_only_touches_that_device(self):
         text = '[devices.a]\nip = "1.1.1.1"\n\n[devices.b]\nip = "2.2.2.2"\nkey = "k"\n'

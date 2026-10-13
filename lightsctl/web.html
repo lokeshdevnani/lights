@@ -40,6 +40,7 @@
     <button onclick="run('on')">On</button>
     <button onclick="run('off')">Off</button>
     <button onclick="run('party 30s')">Party 30s</button>
+    <button onclick="run('sunrise')">Sunrise</button>
   </div>
 </div>
 <div id="lights"></div>
@@ -81,6 +82,7 @@ function card(name, state, caps) {
       <button onclick="run('${name} warm')">Warm</button>
       <button onclick="run('${name} neutral')">Neutral</button>
       <button onclick="run('${name} cool')">Cool</button>
+      <button onclick="run('${name} sunrise')">Sunrise</button>
     </div>`;
   return el;
 }

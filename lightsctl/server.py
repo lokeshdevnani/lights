@@ -21,12 +21,12 @@ def run_cli(line: str) -> tuple:
     args = shlex.split(line)
     if not args or "serve" in args or "--later" in args:
         return False, "not allowed"
-    if "party" in args:  # long-running: start it and return
-        if not any(re.fullmatch(r"\d+[smh]", a) for a in args):
+    if "party" in args or "sunrise" in args:  # long-running: start it and return
+        if "party" in args and not any(re.fullmatch(r"\d+[smh]", a) for a in args):
             args.append("30s")
         subprocess.Popen([*LIGHTS, *args], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, start_new_session=True)
-        return True, "party started"
+        return True, "started"
     with LOCK:
         p = subprocess.run([*LIGHTS, *args], capture_output=True, text=True, timeout=40)
     return p.returncode == 0, (p.stdout + p.stderr).strip()

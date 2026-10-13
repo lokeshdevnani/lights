@@ -58,6 +58,37 @@ def party(lights: list, duration: float = None, interval: float = 1.0) -> None:
                 print(f"{light.name}: could not restore ({e})")
 
 
+def sunrise(lights: list, duration: float = 100, warm: int = 2700) -> None:
+    """Start at 1% in warm white and rise to 100% over `duration` seconds. Ctrl-C leaves the lights as they are."""
+    def prepare(light):
+        try:
+            light.brightness(1)  # before switching on, so the old level never flashes
+        except Exception:
+            pass
+        light.on()
+        light.white(warm if "kelvin" in light.caps else None)
+        light.brightness(1)
+
+    with ThreadPoolExecutor(len(lights)) as pool:
+        for light, err in zip(lights, pool.map(lambda l: _try(prepare, l), lights)):
+            if err:
+                print(f"{light.name}: could not start ({err})")
+        start = time.time()
+        try:
+            for pct in range(2, 101):
+                time.sleep(max(0.0, start + (pct - 1) * duration / 99 - time.time()))
+                list(pool.map(lambda l: _try(l.brightness, pct), lights))
+        except KeyboardInterrupt:
+            print("\nstopped; lights left as they are")
+
+
+def _try(fn, arg):
+    try:
+        fn(arg)
+    except Exception as e:
+        return e  # a missed step is fine; the next one tries again
+
+
 def _safe(light, rgb) -> None:
     try:
         light.color(rgb)

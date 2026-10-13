@@ -19,6 +19,7 @@ Usage: lights [LIGHT[,LIGHT...]] [COMMAND]
   lights lampy warmth 70    warmth 0-100 (0 coolest, 100 warmest)
   lights lampy white        plain white mode
 
+Wake:   lights tube sunrise [DURATION]   1% to 100% in warm white over 100s (or e.g. 5m); lights sunrise at 7:00
 Show:   lights party [DURATION]   random colours until Ctrl-C (or for e.g. 30s, 2m); restores the lights after.
 Later:  add `in 30s|5m|1h30m` or `at 22:30` to any command:  lights lampy red in 30s,  lights off at 22:30
         lights timers (list scheduled commands), lights cancel [ID] (cancel them).
@@ -166,6 +167,16 @@ def main(argv: list) -> None:
         n = timers.cancel(args[0] if args else "all")
         print(f"cancelled {n} timer{'s' if n != 1 else ''}")
         return
+    if cmd == "sunrise":
+        lights = [config.make(cfg, n) for n in targets if "brightness" in config.make(cfg, n).caps]
+        if not lights:
+            sys.exit("none of the selected lights can change brightness")
+        seconds = timers.parse_duration(args[0]) if args else 100
+        if run_at is None:
+            cancel_status_restore() if config.status_name(cfg) in targets else None
+            print(f"sunrise on {', '.join(l.name for l in lights)} over {seconds}s. Ctrl-C to stop.")
+            effects.sunrise(lights, seconds)
+            return
     if cmd == "party":
         if run_at and not args:
             sys.exit("give the party a length when scheduling it, e.g. `lights party 2m in 10m`")
