@@ -16,13 +16,14 @@ Usage: lights [LIGHT[,LIGHT...]] [COMMAND]
   lights lampy orange       a colour name or #RRGGBB
   lights lampy 30           brightness 1-100 (30% works too)
   lights lampy warm         warm | neutral | cool | 3000k   (kelvin where supported)
+  lights lampy warmth 70    warmth 0-100 (0 coolest, 100 warmest)
   lights lampy white        plain white mode
 
 Show:   lights party [DURATION]   random colours until Ctrl-C (or for e.g. 30s, 2m); restores the lights after.
 Later:  add `in 30s|5m|1h30m` or `at 22:30` to any command:  lights lampy red in 30s,  lights off at 22:30
         lights timers (list scheduled commands), lights cancel [ID] (cancel them).
 
-Long forms: color NAME|#RRGGBB|R G B, brightness N, white [KELVIN].
+Long forms: color NAME|#RRGGBB|R G B, brightness N, warmth 0-100, white [KELVIN].
 Also: status, list, fix-ip (re-finds lights whose IP changed).
 Phone:  lights serve [PORT]   web page for your phone (see README).
 No light name means all lights; lights that cannot do a command are skipped.
@@ -118,6 +119,14 @@ def run(cfg: dict, name: str, cmd: str, args: list) -> str:
             raise ValueError("brightness must be 1-100")
         ensure_on(light)
         light.brightness(pct)
+    elif cmd == "warmth":
+        light.require("kelvin")
+        pct = int(args[0]) if args else -1
+        if not 0 <= pct <= 100:
+            raise ValueError("warmth must be 0-100 (0 coolest, 100 warmest)")
+        lo, hi = light.kelvin_range
+        ensure_on(light)
+        light.white(round(hi - (hi - lo) * pct / 100))
     elif cmd == "white":
         kelvin = parse_kelvin(args[0]) if args else None
         ensure_on(light)

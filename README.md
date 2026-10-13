@@ -74,6 +74,7 @@ that cannot do a command are skipped, for example a colour on a white-only light
 | `on`, `off`, `toggle` | power |
 | `orange`, `#ff8800` | colour by name or hex (red green blue yellow orange purple pink cyan) |
 | `30`, `30%` | brightness 1-100 |
+| `warmth 0-100` | warm-to-cool on a percentage scale, 100 = warmest (only where supported) |
 | `warm`, `neutral`, `cool`, `3000k` | white temperature (only where supported, e.g. the Mi lamp, 1700-6500 K) |
 | `white` | plain white mode |
 | `party [30s]` | random vivid colours on every light (or the named ones) until Ctrl-C, or for the given time; the lights go back to how they were afterwards |
