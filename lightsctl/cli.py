@@ -95,16 +95,17 @@ def run(cfg: dict, name: str, cmd: str, args: list) -> str:
     if cmd == "status":
         return describe(light.status())
     if cmd == "fix-ip":
+        field = light.addr_field
         try:
-            light.status()
-            return f"reachable at {cfg['devices'][name].get('ip')}"
+            light.check()
+            return f"reachable at {cfg['devices'][name].get(field)}"
         except Exception:
             pass
         ip = light.find_ip()
         if not ip:
-            raise ConnectionError("not found; check it has power and is on the same network")
-        config.update_field(name, "ip", ip)
-        return f"found at {ip} (was {cfg['devices'][name].get('ip')}), devices.toml updated"
+            raise ConnectionError("not found; check it has power and is nearby / on the same network")
+        config.update_field(name, field, ip)
+        return f"found at {ip} (was {cfg['devices'][name].get(field)}), devices.toml updated"
 
     if cmd == "on":
         light.on()
@@ -240,7 +241,7 @@ def main(argv: list) -> None:
     if cmd == "list":
         for n in names:
             d = cfg["devices"][n]
-            print(f"{n:10} {d['type']:9} {d.get('ip', '?'):15} {'status light' if n == config.status_name(cfg) else ''}")
+            print(f"{n:10} {d['type']:9} {d.get('ip', d.get('address', '?')):15} {'status light' if n == config.status_name(cfg) else ''}")
         return
 
     if cmd not in ("status", "fix-ip") and config.status_name(cfg) in targets:

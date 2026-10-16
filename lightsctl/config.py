@@ -33,10 +33,11 @@ def status_name(cfg: dict) -> str:
 
 
 def make(cfg: dict, name: str):
+    from .melk import MelkLight
     from .tuya import TuyaLight, TuyaWhiteLight
     from .yeelight import YeelightLight
 
-    kinds = {"tuya": TuyaLight, "tuya-white": TuyaWhiteLight, "yeelight": YeelightLight}
+    kinds = {"tuya": TuyaLight, "tuya-white": TuyaWhiteLight, "yeelight": YeelightLight, "melk": MelkLight}
     dev = cfg["devices"][name]
     if dev["type"] not in kinds:
         sys.exit(f"{name}: unknown type {dev['type']!r} (expected one of {', '.join(kinds)})")

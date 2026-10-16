@@ -61,6 +61,7 @@ class Light:
 
     caps = frozenset()
     kelvin_range = None
+    addr_field = "ip"  # the devices.toml field fix-ip rewrites
 
     def __init__(self, name: str, cfg: dict):
         self.name = name
@@ -77,6 +78,7 @@ class Light:
     def white(self, kelvin=None): raise NotImplementedError
     def status(self) -> dict: raise NotImplementedError
     def find_ip(self): raise NotImplementedError
+    def check(self): self.status()  # raises if the light can't be reached
 
     # Used by lights-status to put the light back after showing a status colour.
     def snapshot(self) -> dict: raise NotImplementedError

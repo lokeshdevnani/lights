@@ -1,2 +1,3 @@
 tinytuya
 python-miio
+bleak

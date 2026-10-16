@@ -4,7 +4,7 @@ from pathlib import Path
 
 import datetime as dt
 
-from lightsctl import cli, config, effects, scenes, timers
+from lightsctl import cli, config, effects, melk, scenes, timers
 from lightsctl.base import Unsupported, parse_color, parse_kelvin
 from lightsctl.tuya import TuyaWhiteLight, dp_to_white, hex_to_rgb, rgb_to_hex, white_to_dp
 
@@ -209,6 +209,38 @@ class RunningShowTests(unittest.TestCase):
             with timers.running_as("sunrise 100s on tube"):
                 self.assertEqual([r["what"] for r in timers.running()], ["sunrise 100s on tube"])
             self.assertEqual(timers.running(), [])
+
+
+class FakeBle:
+    sent = []
+
+    def __init__(self, address, timeout): pass
+    async def __aenter__(self): return self
+    async def __aexit__(self, *exc): pass
+    async def write_gatt_char(self, uuid, data, response): FakeBle.sent.append(data.hex())
+
+
+class MelkTests(unittest.TestCase):
+    def test_frames_that_worked_on_the_lamp(self):
+        self.assertEqual(melk.power_frame(True).hex(), "7e0404010001ff00ef")
+        self.assertEqual(melk.power_frame(False).hex(), "7e0404000000ff00ef")
+        self.assertEqual(melk.rgb_frame((255, 0, 0)).hex(), "7e070503ff000010ef")
+        self.assertEqual(melk.brightness_frame(100).hex(), "7e04016400ffff00ef")
+
+    def test_remembers_what_it_sent(self):
+        with tempfile.TemporaryDirectory() as d:
+            old = config.CACHE, melk.BleakClient
+            config.CACHE, melk.BleakClient = Path(d), FakeBle
+            try:
+                FakeBle.sent = []
+                l = melk.MelkLight("corner", {"address": "x"})
+                l.color((0, 0, 255)); l.brightness(40); l.off()
+                self.assertEqual(FakeBle.sent, [melk.rgb_frame((0, 0, 255)).hex(),
+                                                melk.brightness_frame(40).hex(), melk.power_frame(False).hex()])
+                self.assertEqual(l.status(), {"on": False, "mode": "color", "rgb": (0, 0, 255),
+                                              "brightness": 40, "kelvin": None})
+            finally:
+                config.CACHE, melk.BleakClient = old
 
 
 class ConfigTests(unittest.TestCase):

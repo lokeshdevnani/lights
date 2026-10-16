@@ -26,6 +26,13 @@ ip = "192.168.0.x"
 token = "your_32_char_token"
 model = "yeelink.light.bslamp2"
 
+# duoCo StripX Bluetooth light (MELK-* controller, e.g. a Yugam corner lamp). RGB only.
+# Only works while this computer is in Bluetooth range. `fix-ip` re-finds it by ble_name.
+[devices.corner]
+type = "melk"
+ble_name = "MELK-OT21   B2"
+address = "found-by-fix-ip"  # macOS gives each Bluetooth device a per-computer id
+
 # Scenes: `lights scene night`. Each line is a normal lights command; lines for
 # different lights run together. Use your own light names.
 [scenes]
