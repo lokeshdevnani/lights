@@ -10,7 +10,7 @@ NAMED_COLORS = {
 KELVIN_NAMES = {"warm": 2700, "neutral": 4000, "cool": 6500}
 
 
-COMMANDS = frozenset({"on", "off", "toggle", "status", "list", "fix-ip", "color", "brightness", "white", "warmth", "timers", "cancel", "stop", "party", "sunrise", "pomodoro", "sunset", "scene", "serve"})
+COMMANDS = frozenset({"on", "off", "toggle", "status", "list", "fix-ip", "color", "brightness", "white", "warmth", "timers", "cancel", "stop", "party", "sunrise", "pomodoro", "sunset", "scene", "serve", "effect"})
 RESERVED_WORDS = COMMANDS | NAMED_COLORS.keys() | KELVIN_NAMES.keys() | {"all", "in", "at"}
 
 
@@ -54,7 +54,7 @@ def local_subnet() -> str:
 class Light:
     """One physical light. Subclasses talk to a specific protocol.
 
-    caps: subset of {"color", "brightness", "kelvin"}; the CLI skips commands a light lacks.
+    caps: subset of {"color", "brightness", "kelvin", "effects"}; the CLI skips commands a light lacks.
     status() returns {"on": bool, "mode": "color"|"white", "rgb": (r,g,b)|None,
                       "brightness": 1-100|None, "kelvin": int|None}.
     """
@@ -76,6 +76,7 @@ class Light:
     def color(self, rgb: tuple): raise NotImplementedError
     def brightness(self, pct: int): raise NotImplementedError
     def white(self, kelvin=None): raise NotImplementedError
+    def effect(self, name: str, speed=None): raise NotImplementedError
     def status(self) -> dict: raise NotImplementedError
     def find_ip(self): raise NotImplementedError
     def check(self): self.status()  # raises if the light can't be reached

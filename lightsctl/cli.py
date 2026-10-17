@@ -23,6 +23,7 @@ Wake:   lights tube sunrise [DURATION]   1% to 100% in warm white over 100s (or 
 Sleep:  lights tube sunset [DURATION]   fade out and switch off over 30m by default
 Scene:  lights scene NAME   run a named preset from [scenes] in devices.toml (lights scene: list them)
 Focus:  lights lampy pomodoro [FOCUS [BREAK [ROUNDS]]]   red focus, green break (25m, 5m, 4 rounds by default)
+Effect: lights corner effect gradual [SPEED]   the light's built-in effects, speed 0-100 (lights corner effect: list them)
 Show:   lights party [DURATION]   random colours until Ctrl-C (or for e.g. 30s, 2m); restores the lights after.
 Later:  add `in 30s|5m|1h30m` or `at 22:30` to any command:  lights lampy red in 30s,  lights off at 22:30
         lights timers (list scheduled commands), lights cancel [ID] (cancel them),
@@ -73,6 +74,8 @@ def describe(st: dict) -> str:
         parts.append(f"colour {st['rgb']}")
     else:
         parts.append("white" + (f" {st['kelvin']}K" if st["kelvin"] else ""))
+    if st.get("effect"):
+        parts[-1] = f"effect {st['effect']}"
     if st["brightness"]:
         parts.append(f"brightness {st['brightness']}%")
     return ", ".join(parts)
@@ -133,6 +136,16 @@ def run(cfg: dict, name: str, cmd: str, args: list) -> str:
         lo, hi = light.kelvin_range
         ensure_on(light)
         light.white(round(hi - (hi - lo) * pct / 100))
+    elif cmd == "effect":
+        light.require("effects")
+        if not args:
+            from .melk import EFFECTS
+            return "effects: " + ", ".join(EFFECTS) + ", or a number 0-212"
+        speed = int(args[1].rstrip("%")) if len(args) > 1 else None
+        if speed is not None and not 0 <= speed <= 100:
+            raise ValueError("speed must be 0-100")
+        ensure_on(light)
+        light.effect(args[0].lower(), speed)
     elif cmd == "white":
         kelvin = parse_kelvin(args[0]) if args else None
         ensure_on(light)

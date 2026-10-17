@@ -15,7 +15,7 @@ $ lights serve                    # a page like this for your phone
 </p>
 
 - **Local.** Commands go straight to the lights over your Wi-Fi, so it works when the internet is down.
-- **One tool for different brands.** Tuya / Smart Life lights (Wipro and many others, including white-only tubelights) and the Xiaomi Mi Bedside Lamp 2 (Yeelight protocol over miIO).
+- **One tool for different brands.** Tuya / Smart Life lights (Wipro and many others, including white-only tubelights) the Xiaomi Mi Bedside Lamp 2 (Yeelight protocol over miIO), and Bluetooth lights made for the duoCo StripX app (e.g. a Yugam corner lamp).
 - **Timers and a pomodoro.** Add `in 25m` or `at 22:30` to any command, or run `lights lampy pomodoro` for red focus and green breaks on the light you choose. The phone page has both.
 - **Phone page.** Colours, brightness, warmth, sunrise and sunset, scene buttons and one-off alarms. Put it behind your own tunnel to use it away from home.
 - **Small.** Plain Python, no framework. Or paste one prompt into Claude Code and let it do the setup.
@@ -80,6 +80,13 @@ light in Smart Life first.
 using QR login. Leave its server prompt empty to check every region, because the lamp may be on
 a region other than your own (here it was `i2`).
 
+**duoCo StripX Bluetooth light** (`MELK-*` controllers, e.g. a Yugam corner lamp): `type = "melk"`,
+its Bluetooth name as `ble_name`, and any placeholder `address`. Then run `lights NAME fix-ip`, which
+finds it by name and fills in the address. Close the StripX app first, since the lamp accepts
+one connection at a time. It is RGB only, and it only works while the computer is in Bluetooth range.
+It can't report its state, so `status` shows the last thing `lights` sent. The protocol is from
+[Corner-Floor-Lamp-Controller](https://github.com/wxx9248/Corner-Floor-Lamp-Controller).
+
 ## Usage
 
 ```
@@ -102,6 +109,7 @@ that cannot do a command are skipped, for example a colour on a white-only light
 | `warmth 0-100` | warm-to-cool on a percentage scale, 100 = warmest (only where supported) |
 | `warm`, `neutral`, `cool`, `3000k` | white temperature (only where supported, e.g. the Mi lamp, 1700-6500 K) |
 | `white` | plain white mode |
+| `effect NAME [SPEED]` | the light's built-in effects (duoCo lights): `gradual`, `rainbow`, `ocean`, `candle` and more, or a mode number 0-212; speed 0-100. `lights corner effect` lists them |
 | `party [30s]` | random vivid colours on every light (or the named ones) until Ctrl-C, or for the given time; the lights go back to how they were afterwards |
 | `fix-ip` | re-find lights whose IP changed and update `devices.toml`; lights that still respond are left alone |
 | `list` | configured lights |

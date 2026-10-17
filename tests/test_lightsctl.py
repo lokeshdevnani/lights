@@ -226,6 +226,14 @@ class MelkTests(unittest.TestCase):
         self.assertEqual(melk.power_frame(False).hex(), "7e0404000000ff00ef")
         self.assertEqual(melk.rgb_frame((255, 0, 0)).hex(), "7e070503ff000010ef")
         self.assertEqual(melk.brightness_frame(100).hex(), "7e04016400ffff00ef")
+        self.assertEqual(melk.effect_frame("gradual").hex(), "7e0503c706ffff00ef")
+
+    def test_effects_by_name_scene_or_number(self):
+        self.assertEqual(melk.effect_frame("rainbow").hex(), "7e05310b07ffff01ef")
+        self.assertEqual(melk.effect_frame("57"), melk.frame(0x05, 0x03, 57, 0x06))
+        for bad in ("nope", "213"):
+            with self.assertRaises(ValueError):
+                melk.effect_frame(bad)
 
     def test_remembers_what_it_sent(self):
         with tempfile.TemporaryDirectory() as d:
@@ -238,7 +246,12 @@ class MelkTests(unittest.TestCase):
                 self.assertEqual(FakeBle.sent, [melk.rgb_frame((0, 0, 255)).hex(),
                                                 melk.brightness_frame(40).hex(), melk.power_frame(False).hex()])
                 self.assertEqual(l.status(), {"on": False, "mode": "color", "rgb": (0, 0, 255),
-                                              "brightness": 40, "kelvin": None})
+                                              "brightness": 40, "kelvin": None, "effect": None})
+                l.effect("ocean", 70)
+                self.assertEqual(FakeBle.sent[-2:], [melk.effect_frame("ocean").hex(), melk.speed_frame(70).hex()])
+                self.assertEqual(cli.describe({**l.status(), "on": True}), "on, effect ocean, brightness 40%")
+                l.color((255, 0, 0))
+                self.assertIsNone(l.status()["effect"])
             finally:
                 config.CACHE, melk.BleakClient = old
 

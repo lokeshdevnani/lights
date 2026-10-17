@@ -61,7 +61,9 @@ class Handler(BaseHTTPRequestHandler):
             lights = {m[1]: m[2] for m in re.finditer(r"^(\w+): (.*)$", out, re.M)}
             cfg = config.load()
             caps = {n: sorted(config.make(cfg, n).caps) for n in lights if n in cfg["devices"]}
-            return self.send(200, json.dumps({"lights": lights, "caps": caps, "scenes": scenes.names(cfg)}), "application/json")
+            from .melk import EFFECTS
+            body = {"lights": lights, "caps": caps, "scenes": scenes.names(cfg), "effects": list(EFFECTS)}
+            return self.send(200, json.dumps(body), "application/json")
         if url.path == "/api/timers":
             jobs = [{"id": j["id"], "at": f"{dt.datetime.fromtimestamp(j['run_at']):%a %H:%M}", "what": " ".join(j["argv"])}
                     for j in timers.pending()]
